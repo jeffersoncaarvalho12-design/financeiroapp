@@ -1,5 +1,6 @@
 <resources>
-    <style name="Theme.FinanceiroTechNet" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.FinanceiroTechNet" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:statusBarColor">#0D47A1</item>
         <item name="android:navigationBarColor">#000000</item>
     </style>
 </resources>
