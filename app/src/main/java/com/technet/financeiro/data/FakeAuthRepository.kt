@@ -60,7 +60,6 @@ class FakeAuthRepository : AuthRepository {
                 ?: return@withContext Result.failure(Exception("Usuário não retornado pela API"))
 
             val user = User(
-                id = userJson.optInt("id", 0),
                 name = userJson.optString("name", ""),
                 email = userJson.optString("email", email)
             )
@@ -93,7 +92,8 @@ class FakeAuthRepository : AuthRepository {
                     receitaScm = 0.0,
                     combustivel = 0.0,
                     manutencao = 0.0,
-                    energia = 0.0
+                    energia = 0.0,
+                    agua = 0.0
                 )
             }
 
@@ -103,14 +103,16 @@ class FakeAuthRepository : AuthRepository {
                 receitaScm = data.optDouble("receita_scm", 0.0),
                 combustivel = data.optDouble("combustivel", 0.0),
                 manutencao = data.optDouble("manutencao", 0.0),
-                energia = data.optDouble("energia", 0.0)
+                energia = data.optDouble("energia", 0.0),
+                agua = data.optDouble("agua", 0.0)
             )
         } catch (_: Exception) {
             DashboardSummary(
                 receitaScm = 0.0,
                 combustivel = 0.0,
                 manutencao = 0.0,
-                energia = 0.0
+                energia = 0.0,
+                agua = 0.0
             )
         }
     }
