@@ -1,5 +1,6 @@
 package com.technet.financeiro.data
 
+import com.technet.financeiro.model.ContaPagar
 import com.technet.financeiro.model.DashboardSummary
 import com.technet.financeiro.model.User
 
@@ -13,4 +14,6 @@ interface AuthRepository {
         parcelas: Int,
         observacoes: String
     ): Result<String>
+
+    suspend fun listContasPagar(): Result<List<ContaPagar>>
 }
