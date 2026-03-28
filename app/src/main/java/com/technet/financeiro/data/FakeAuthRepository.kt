@@ -18,7 +18,10 @@ class FakeAuthRepository : AuthRepository {
 
     private var sessionCookie: String? = null
 
-    override suspend fun login(email: String, password: String): Result<User> = withContext(Dispatchers.IO) {
+    override suspend fun login(
+        email: String,
+        password: String
+    ): Result<User> = withContext(Dispatchers.IO) {
         try {
             val url = URL(ApiConfig.BASE_URL + "login.php")
             val conn = (url.openConnection() as HttpURLConnection).apply {
@@ -52,12 +55,15 @@ class FakeAuthRepository : AuthRepository {
             val json = JSONObject(response)
 
             if (!json.optBoolean("success", false)) {
-                val message = json.optString("message", "Falha no login")
-                return@withContext Result.failure(Exception(message))
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Falha no login"))
+                )
             }
 
             val userJson = json.optJSONObject("user")
-                ?: return@withContext Result.failure(Exception("Usuário não retornado pela API"))
+                ?: return@withContext Result.failure(
+                    Exception("Usuário não retornado pela API")
+                )
 
             Result.success(
                 User(
@@ -146,8 +152,9 @@ class FakeAuthRepository : AuthRepository {
             val json = JSONObject(response)
 
             if (!json.optBoolean("success", false)) {
-                val message = json.optString("message", "Erro ao cadastrar despesa")
-                return@withContext Result.failure(Exception(message))
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Erro ao cadastrar despesa"))
+                )
             }
 
             Result.success(json.optString("message", "Despesa cadastrada com sucesso"))
@@ -156,9 +163,12 @@ class FakeAuthRepository : AuthRepository {
         }
     }
 
-    override suspend fun listContasPagar(): Result<List<ContaPagar>> = withContext(Dispatchers.IO) {
+    override suspend fun listContasPagar(
+        mes: Int,
+        ano: Int
+    ): Result<List<ContaPagar>> = withContext(Dispatchers.IO) {
         try {
-            val url = URL(ApiConfig.BASE_URL + "contas_pagar_list.php")
+            val url = URL(ApiConfig.BASE_URL + "contas_pagar_list.php?mes=$mes&ano=$ano")
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 doInput = true
@@ -183,6 +193,7 @@ class FakeAuthRepository : AuthRepository {
             if (arr != null) {
                 for (i in 0 until arr.length()) {
                     val o = arr.getJSONObject(i)
+
                     items.add(
                         ContaPagar(
                             id = o.optInt("id", 0),
