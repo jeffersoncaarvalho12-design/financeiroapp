@@ -8,8 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heigt
-import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -92,64 +91,72 @@ fun DashboardScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundSoft),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Card(
-                shape = RoundedCornerShape(bottomStart = 26.dp, bottomEnd = 26.dp)
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text("Financeiro TECH NET", style = MaterialTheme.typography.headlineSmall)
-                            Text("Olá, ${user.name}", style = MaterialTheme.typography.bodyLarge)
-                            Text(user.email, style = MaterialTheme.typography.bodyMedium)
-                        }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
-                        Button(onClick = onLogout) {
-                            Icon(Icons.Default.ExitToApp, contentDescription = null)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Sair")
-                        }
+        item {
+            Card(
+                shape = RoundedCornerShape(bottomStart = 26.dp, bottomEnd = 26.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    Column {
+                        Text("Financeiro TECH NET", style = MaterialTheme.typography.headlineSmall)
+                        Text("Olá, ${user.name}", style = MaterialTheme.typography.bodyLarge)
+                        Text(user.email, style = MaterialTheme.typography.bodyMedium)
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Button(onClick = onOpenNewExpense) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Nova despesa")
-                        }
-
-                        TextButton(onClick = {}) {
-                            Text("Contas em breve")
-                        }
+                    Button(onClick = onLogout) {
+                        Icon(Icons.Default.ExitToApp, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Sair")
                     }
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(onClick = onOpenNewExpense) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Nova despesa")
+                    }
+
+                    TextButton(onClick = {}) {
+                        Text("Contas em breve")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
             }
         }
 
         if (!message.isNullOrBlank()) {
             item {
                 Card(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(18.dp)
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = message,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
                 }
             }
         }
@@ -161,31 +168,31 @@ fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(360.dp)
-                    .padding(horizontal = 16.dp)
+                    .height(430.dp)
             ) {
                 items(cards) { card ->
                     Card(shape = RoundedCornerShape(22.dp)) {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(card.color)
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.SpaceBetween
+                                .background(card.color),
+                            verticalArrangement = Arrangement.SpaceAround
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(14.dp))
-                                    .padding(10.dp)
+                                    .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(14.dp)),
+                                contentAlignment = Alignment.Center
                             ) {
+                                Spacer(modifier = Modifier.width(50.dp))
+                                Spacer(modifier = Modifier.height(50.dp))
                                 card.icon()
                             }
 
-                            Column {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
                                 Text(card.title, color = Color.White, style = MaterialTheme.typography.titleMedium)
-                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(card.value, color = Color.White, style = MaterialTheme.typography.headlineSmall)
-                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     card.subtitle,
                                     color = Color.White.copy(alpha = 0.9f),
@@ -200,17 +207,21 @@ fun DashboardScreen(
 
         item {
             Card(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(24.dp)
+                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Text("Próximas telas", style = MaterialTheme.typography.titleLarge)
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text("• Contas a pagar")
-                    Text("• Pagamento com comprovante")
-                    Text("• Conciliação")
-                    Text("• Relatórios")
+                Spacer(modifier = Modifier.height(18.dp))
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                    Column {
+                        Text("Próximas telas", style = MaterialTheme.typography.titleLarge)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text("• Contas a pagar")
+                        Text("• Pagamento com comprovante")
+                        Text("• Conciliação")
+                        Text("• Relatórios")
+                    }
                 }
+                Spacer(modifier = Modifier.height(18.dp))
             }
         }
 
