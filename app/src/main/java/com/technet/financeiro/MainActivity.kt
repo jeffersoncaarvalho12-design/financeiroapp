@@ -45,6 +45,10 @@ class MainActivity : ComponentActivity() {
                             items = state.contasPagar,
                             isLoading = state.isLoadingContas,
                             errorMessage = state.errorMessage,
+                            mes = state.contasMes,
+                            ano = state.contasAno,
+                            onPreviousMonth = viewModel::previousMonthContas,
+                            onNextMonth = viewModel::nextMonthContas,
                             onBack = viewModel::backToDashboard
                         )
                     }
