@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 enum class AppScreen {
     DASHBOARD,
@@ -28,7 +29,9 @@ data class MainUiState(
     val isSavingExpense: Boolean = false,
     val expenseMessage: String? = null,
     val contasPagar: List<ContaPagar> = emptyList(),
-    val isLoadingContas: Boolean = false
+    val isLoadingContas: Boolean = false,
+    val contasMes: Int = Calendar.getInstance().get(Calendar.MONTH) + 1,
+    val contasAno: Int = Calendar.getInstance().get(Calendar.YEAR)
 )
 
 class MainViewModel(
@@ -75,15 +78,48 @@ class MainViewModel(
     }
 
     fun openContasPagar() {
+        val state = _uiState.value
+        loadContasPagar(state.contasMes, state.contasAno)
+    }
+
+    fun previousMonthContas() {
+        val state = _uiState.value
+        var mes = state.contasMes - 1
+        var ano = state.contasAno
+
+        if (mes < 1) {
+            mes = 12
+            ano--
+        }
+
+        loadContasPagar(mes, ano)
+    }
+
+    fun nextMonthContas() {
+        val state = _uiState.value
+        var mes = state.contasMes + 1
+        var ano = state.contasAno
+
+        if (mes > 12) {
+            mes = 1
+            ano++
+        }
+
+        loadContasPagar(mes, ano)
+    }
+
+    private fun loadContasPagar(mes: Int, ano: Int) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 currentScreen = AppScreen.CONTAS_PAGAR,
                 isLoadingContas = true,
                 errorMessage = null,
-                expenseMessage = null
+                expenseMessage = null,
+                contasMes = mes,
+                contasAno = ano
             )
 
-            repository.listContasPagar()
+            repository.listContasPagar(mes, ano)
                 .onSuccess { items ->
                     _uiState.value = _uiState.value.copy(
                         contasPagar = items,
