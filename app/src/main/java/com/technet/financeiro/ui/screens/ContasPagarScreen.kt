@@ -2,6 +2,7 @@ package com.technet.financeiro.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -60,6 +61,19 @@ fun ContasPagarScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "${items.size} contas carregadas",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
+
             Spacer(modifier = Modifier.height(18.dp))
         }
 
@@ -89,57 +103,28 @@ fun ContasPagarScreen(
                 }
             }
 
+            items.isEmpty() -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Nenhuma conta encontrada")
+                }
+            }
+
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    item {
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
+                    item { Spacer(modifier = Modifier.height(10.dp)) }
 
                     items(items) { conta ->
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column {
-                                Spacer(modifier = Modifier.height(14.dp))
-
-                                Text(
-                                    text = conta.descricao,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-
-                                Spacer(modifier = Modifier.height(6.dp))
-
-                                Text(
-                                    text = conta.fornecedorNome,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Gray
-                                )
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                StatusChip(conta.status)
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                InfoLine("Vencimento", conta.dataVencimento)
-                                InfoLine("Pagamento", conta.dataPagamento.ifBlank { "-" })
-                                InfoLine("Categoria", conta.categoria)
-                                InfoLine("Total", money(conta.valor))
-                                InfoLine("Pago", money(conta.valorPago))
-                                InfoLine("Falta pagar", money(conta.saldoAberto))
-
-                                Spacer(modifier = Modifier.height(14.dp))
-                            }
-                        }
+                        ContaPagarCard(conta = conta)
                     }
 
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
+                    item { Spacer(modifier = Modifier.height(14.dp)) }
                 }
             }
         }
@@ -147,42 +132,201 @@ fun ContasPagarScreen(
 }
 
 @Composable
-private fun StatusChip(status: String) {
-    val bg = when (status.lowercase()) {
-        "pago" -> Color(0xFFC8F7D2)
-        "vencido" -> Color(0xFFFAD1D1)
-        "parcial" -> Color(0xFFFFE7B8)
-        else -> Color(0xFFE8EEF9)
-    }
+private fun ContaPagarCard(conta: ContaPagar) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column {
+            Spacer(modifier = Modifier.height(12.dp))
 
-    val fg = when (status.lowercase()) {
-        "pago" -> Color(0xFF1E7D3A)
-        "vencido" -> Color(0xFFB3261E)
-        "parcial" -> Color(0xFF946200)
-        else -> Color(0xFF2A4A7B)
-    }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = conta.descricao.ifBlank { "-" },
+                        style = MaterialTheme.typography.titleMedium
+                    )
 
-    Card(shape = RoundedCornerShape(50.dp)) {
-        Text(
-            text = status.replaceFirstChar { it.uppercase() },
-            color = fg
-        )
+                    Text(
+                        text = fornecedorOuTraco(conta.fornecedorNome),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+
+                StatusChip(conta.status)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                MiniInfoCard(
+                    titulo = "Vencimento",
+                    valor = formatDate(conta.dataVencimento),
+                    modifier = Modifier.weight(1f)
+                )
+
+                MiniInfoCard(
+                    titulo = "Pagamento",
+                    valor = formatDateOrDash(conta.dataPagamento),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            MiniInfoCard(
+                titulo = "Categoria",
+                valor = valorOuTraco(conta.categoria),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                MiniInfoCard(
+                    titulo = "Total",
+                    valor = money(conta.valor),
+                    modifier = Modifier.weight(1f)
+                )
+
+                MiniInfoCard(
+                    titulo = "Pago",
+                    valor = money(conta.valorPago),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            MiniInfoCard(
+                titulo = "Falta pagar",
+                valor = money(faltaPagar(conta)),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
     }
 }
 
 @Composable
-private fun InfoLine(label: String, value: String) {
+private fun MiniInfoCard(
+    titulo: String,
+    valor: String,
+    modifier: Modifier = Modifier
+) {
     Card(
         shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier
     ) {
-        Column {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(value, style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(
+                text = titulo.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray
+            )
+            Text(
+                text = valor,
+                style = MaterialTheme.typography.bodyLarge
+            )
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun StatusChip(status: String) {
+    val normalized = status.trim().lowercase()
+
+    val bg = when (normalized) {
+        "pago" -> Color(0xFFD8F5DD)
+        "vencido" -> Color(0xFFF9D9D9)
+        "parcial" -> Color(0xFFFFEDBF)
+        else -> Color(0xFFE7EEF9)
+    }
+
+    val fg = when (normalized) {
+        "pago" -> Color(0xFF1C7C39)
+        "vencido" -> Color(0xFFB3261E)
+        "parcial" -> Color(0xFF9A6A00)
+        else -> Color(0xFF305A8D)
+    }
+
+    Card(
+        shape = RoundedCornerShape(50.dp)
+    ) {
+        Box(
+            modifier = Modifier.background(bg),
+            contentAlignment = Alignment.Center
+        ) {
+            Spacer(modifier = Modifier.width(74.dp))
+            Spacer(modifier = Modifier.height(34.dp))
+            Text(
+                text = formatStatus(status),
+                color = fg,
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+    }
+}
+
+private fun fornecedorOuTraco(value: String?): String {
+    if (value == null) return "-"
+    val v = value.trim()
+    return if (v.isBlank() || v.lowercase() == "null") "-" else v
+}
+
+private fun valorOuTraco(value: String?): String {
+    if (value == null) return "-"
+    val v = value.trim()
+    return if (v.isBlank() || v.lowercase() == "null") "-" else v
+}
+
+private fun formatDate(value: String?): String {
+    if (value == null) return "-"
+    val v = value.trim()
+    if (v.isBlank() || v.lowercase() == "null") return "-"
+    return if (v.length >= 10 && v[4] == '-' && v[7] == '-') {
+        "${v.substring(8, 10)}/${v.substring(5, 7)}/${v.substring(0, 4)}"
+    } else {
+        v
+    }
+}
+
+private fun formatDateOrDash(value: String?): String {
+    return formatDate(value)
+}
+
+private fun formatStatus(status: String): String {
+    val v = status.trim()
+    if (v.isBlank()) return "Pendente"
+    return v.replaceFirstChar { it.uppercase() }
+}
+
+private fun faltaPagar(conta: ContaPagar): Double {
+    return when {
+        conta.saldoAberto > 0.0 -> conta.saldoAberto
+        conta.valor > conta.valorPago -> conta.valor - conta.valorPago
+        else -> 0.0
     }
 }
 
