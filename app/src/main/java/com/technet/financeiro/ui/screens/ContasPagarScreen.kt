@@ -166,10 +166,10 @@ private fun ContaPagarCard(conta: ContaPagar) {
     val sideColor = statusSideColor(conta.status)
     val badgeBg = statusBadgeBg(conta.status)
     val badgeFg = statusBadgeFg(conta.status)
-    val cardBg = statusCardBg(conta.status)
+    val cardBg = Color.White
 
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -179,8 +179,8 @@ private fun ContaPagarCard(conta: ContaPagar) {
         ) {
             Box(
                 modifier = Modifier
-                    .width(6.dp)
-                    .height(206.dp)
+                    .width(5.dp)
+                    .height(170.dp)
                     .background(sideColor)
             )
 
@@ -190,7 +190,7 @@ private fun ContaPagarCard(conta: ContaPagar) {
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -218,12 +218,12 @@ private fun ContaPagarCard(conta: ContaPagar) {
                             modifier = Modifier.background(badgeBg),
                             contentAlignment = Alignment.Center
                         ) {
-                            Spacer(modifier = Modifier.width(86.dp))
-                            Spacer(modifier = Modifier.height(34.dp))
+                            Spacer(modifier = Modifier.width(80.dp))
+                            Spacer(modifier = Modifier.height(30.dp))
                             Text(
                                 text = formatStatus(conta.status),
                                 color = badgeFg,
-                                style = MaterialTheme.typography.labelLarge
+                                style = MaterialTheme.typography.labelMedium
                             )
                         }
                     }
@@ -231,51 +231,29 @@ private fun ContaPagarCard(conta: ContaPagar) {
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    MiniInfoCard(
-                        titulo = "Vencimento",
-                        valor = formatDate(conta.dataVencimento),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    MiniInfoCard(
-                        titulo = "Pagamento",
-                        valor = formatDateOrDash(conta.dataPagamento),
-                        modifier = Modifier.weight(1f)
-                    )
+                    InfoItem("Vencimento", formatDate(conta.dataVencimento))
+                    InfoItem("Pagamento", formatDateOrDash(conta.dataPagamento))
                 }
 
-                MiniInfoCard(
-                    titulo = "Categoria",
-                    valor = valorOuTraco(conta.categoria),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                InfoItem("Categoria", valorOuTraco(conta.categoria))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    MiniInfoCard(
-                        titulo = "Total",
-                        valor = money(conta.valor),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    MiniInfoCard(
-                        titulo = "Pago",
-                        valor = money(conta.valorPago),
-                        modifier = Modifier.weight(1f)
-                    )
+                    InfoItem("Total", money(conta.valor))
+                    InfoItem("Pago", money(conta.valorPago))
                 }
 
-                MiniInfoCard(
-                    titulo = "Falta pagar",
-                    valor = money(faltaPagar(conta)),
-                    modifier = Modifier.fillMaxWidth()
+                InfoItem(
+                    "Falta pagar",
+                    money(faltaPagar(conta)),
+                    destaque = true
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
             }
 
             Spacer(modifier = Modifier.width(10.dp))
@@ -284,29 +262,25 @@ private fun ContaPagarCard(conta: ContaPagar) {
 }
 
 @Composable
-private fun MiniInfoCard(
+private fun InfoItem(
     titulo: String,
     valor: String,
-    modifier: Modifier = Modifier
+    destaque: Boolean = false
 ) {
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        modifier = modifier
-    ) {
-        Column {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = titulo.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = valor,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
+    Column {
+        Text(
+            text = titulo.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.Gray
+        )
+
+        Text(
+            text = valor,
+            style = if (destaque)
+                MaterialTheme.typography.titleMedium
+            else
+                MaterialTheme.typography.bodyLarge
+        )
     }
 }
 
@@ -334,15 +308,6 @@ private fun statusBadgeFg(status: String): Color {
         "vencido" -> Color(0xFFBA2E2E)
         "parcial" -> Color(0xFF9A6A00)
         else -> Color(0xFF2E5EAA)
-    }
-}
-
-private fun statusCardBg(status: String): Color {
-    return when (status.trim().lowercase()) {
-        "pago" -> Color(0xFFF3FBF5)
-        "vencido" -> Color(0xFFFFF6F6)
-        "parcial" -> Color(0xFFFFFCF2)
-        else -> Color(0xFFF8FAFD)
     }
 }
 
