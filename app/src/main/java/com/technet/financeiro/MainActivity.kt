@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.technet.financeiro.ui.screens.ContasPagarScreen
 import com.technet.financeiro.ui.screens.DashboardScreen
 import com.technet.financeiro.ui.screens.LoginScreen
 import com.technet.financeiro.ui.screens.NewExpenseScreen
@@ -39,12 +40,22 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    state.currentScreen == AppScreen.CONTAS_PAGAR -> {
+                        ContasPagarScreen(
+                            items = state.contasPagar,
+                            isLoading = state.isLoadingContas,
+                            errorMessage = state.errorMessage,
+                            onBack = viewModel::backToDashboard
+                        )
+                    }
+
                     else -> {
                         DashboardScreen(
                             user = state.user,
                             summary = state.dashboard,
                             message = state.expenseMessage,
                             onOpenNewExpense = viewModel::openNewExpense,
+                            onOpenContasPagar = viewModel::openContasPagar,
                             onClearMessage = viewModel::clearMessages,
                             onLogout = viewModel::logout
                         )
