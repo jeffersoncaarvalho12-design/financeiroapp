@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.technet.financeiro.data.AuthRepository
 import com.technet.financeiro.data.FakeAuthRepository
+import com.technet.financeiro.model.ContaPagar
 import com.technet.financeiro.model.DashboardSummary
 import com.technet.financeiro.model.User
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +14,8 @@ import kotlinx.coroutines.launch
 
 enum class AppScreen {
     DASHBOARD,
-    NEW_EXPENSE
+    NEW_EXPENSE,
+    CONTAS_PAGAR
 }
 
 data class MainUiState(
@@ -24,7 +26,9 @@ data class MainUiState(
     val isLoggedIn: Boolean = false,
     val currentScreen: AppScreen = AppScreen.DASHBOARD,
     val isSavingExpense: Boolean = false,
-    val expenseMessage: String? = null
+    val expenseMessage: String? = null,
+    val contasPagar: List<ContaPagar> = emptyList(),
+    val isLoadingContas: Boolean = false
 )
 
 class MainViewModel(
@@ -68,6 +72,31 @@ class MainViewModel(
             expenseMessage = null,
             errorMessage = null
         )
+    }
+
+    fun openContasPagar() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                currentScreen = AppScreen.CONTAS_PAGAR,
+                isLoadingContas = true,
+                errorMessage = null,
+                expenseMessage = null
+            )
+
+            repository.listContasPagar()
+                .onSuccess { items ->
+                    _uiState.value = _uiState.value.copy(
+                        contasPagar = items,
+                        isLoadingContas = false
+                    )
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingContas = false,
+                        errorMessage = error.message ?: "Erro ao listar contas."
+                    )
+                }
+        }
     }
 
     fun backToDashboard() {
