@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -18,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.ExitToApp
@@ -28,7 +28,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -41,6 +43,7 @@ import com.technet.financeiro.ui.theme.CardGreen
 import com.technet.financeiro.ui.theme.CardOrange
 import com.technet.financeiro.ui.theme.CardRed
 import com.technet.financeiro.ui.theme.CardYellow
+import kotlinx.coroutines.delay
 
 data class DashboardCardUi(
     val title: String,
@@ -54,6 +57,9 @@ data class DashboardCardUi(
 fun DashboardScreen(
     user: User,
     summary: DashboardSummary,
+    message: String?,
+    onOpenNewExpense: () -> Unit,
+    onClearMessage: () -> Unit,
     onLogout: () -> Unit
 ) {
     val cards = listOf(
@@ -74,33 +80,75 @@ fun DashboardScreen(
         }
     )
 
+    if (!message.isNullOrBlank()) {
+        LaunchedEffect(message) {
+            delay(2500)
+            onClearMessage()
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundSoft)
-            .padding(16.dp),
+            .background(BackgroundSoft),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Card(shape = RoundedCornerShape(24.dp)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text("Financeiro TECH NET", style = MaterialTheme.typography.headlineSmall)
-                        Text("Olá, ${user.name}", style = MaterialTheme.typography.bodyLarge)
-                        Text(user.email, style = MaterialTheme.typography.bodyMedium)
+            Card(
+                shape = RoundedCornerShape(bottomStart = 26.dp, bottomEnd = 26.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Financeiro TECH NET", style = MaterialTheme.typography.headlineSmall)
+                            Text("Olá, ${user.name}", style = MaterialTheme.typography.bodyLarge)
+                            Text(user.email, style = MaterialTheme.typography.bodyMedium)
+                        }
+
+                        Button(onClick = onLogout) {
+                            Icon(Icons.Default.ExitToApp, contentDescription = null)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Sair")
+                        }
                     }
 
-                    Button(onClick = onLogout) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = null)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Sair")
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(onClick = onOpenNewExpense) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Nova despesa")
+                        }
+
+                        TextButton(onClick = {}) {
+                            Text("Contas em breve")
+                        }
                     }
+                }
+            }
+        }
+
+        if (!message.isNullOrBlank()) {
+            item {
+                Card(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text(
+                        text = message,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 }
             }
         }
@@ -113,6 +161,7 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(360.dp)
+                    .padding(horizontal = 16.dp)
             ) {
                 items(cards) { card ->
                     Card(shape = RoundedCornerShape(22.dp)) {
@@ -136,7 +185,11 @@ fun DashboardScreen(
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(card.value, color = Color.White, style = MaterialTheme.typography.headlineSmall)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(card.subtitle, color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    card.subtitle,
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
                             }
                         }
                     }
@@ -145,17 +198,23 @@ fun DashboardScreen(
         }
 
         item {
-            Card(shape = RoundedCornerShape(24.dp)) {
+            Card(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(24.dp)
+            ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text("Próximas telas", style = MaterialTheme.typography.titleLarge)
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text("• Contas")
-                    Text("• Categorias")
+                    Text("• Contas a pagar")
+                    Text("• Pagamento com comprovante")
                     Text("• Conciliação")
                     Text("• Relatórios")
-                    Text("• Integração real com o sistema web")
                 }
             }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
