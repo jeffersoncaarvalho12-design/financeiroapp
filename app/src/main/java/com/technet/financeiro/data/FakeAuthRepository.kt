@@ -50,8 +50,7 @@ class FakeAuthRepository : AuthRepository {
             val response = readResponse(conn)
             val json = JSONObject(response)
 
-            val success = json.optBoolean("success", false)
-            if (!success) {
+            if (!json.optBoolean("success", false)) {
                 val message = json.optString("message", "Falha no login")
                 return@withContext Result.failure(Exception(message))
             }
@@ -59,12 +58,12 @@ class FakeAuthRepository : AuthRepository {
             val userJson = json.optJSONObject("user")
                 ?: return@withContext Result.failure(Exception("Usuário não retornado pela API"))
 
-            val user = User(
-                name = userJson.optString("name", ""),
-                email = userJson.optString("email", email)
+            Result.success(
+                User(
+                    name = userJson.optString("name", ""),
+                    email = userJson.optString("email", email)
+                )
             )
-
-            Result.success(user)
         } catch (e: Exception) {
             Result.failure(Exception("Erro ao conectar na API: ${e.message}"))
         }
@@ -79,24 +78,11 @@ class FakeAuthRepository : AuthRepository {
                 connectTimeout = 15000
                 readTimeout = 15000
                 setRequestProperty("Accept", "application/json")
-                sessionCookie?.let {
-                    setRequestProperty("Cookie", it)
-                }
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
             }
 
             val response = readResponse(conn)
             val json = JSONObject(response)
-
-            if (!json.optBoolean("success", false)) {
-                return@withContext DashboardSummary(
-                    receitaScm = 0.0,
-                    combustivel = 0.0,
-                    manutencao = 0.0,
-                    energia = 0.0,
-                    agua = 0.0
-                )
-            }
-
             val data = json.optJSONObject("data") ?: JSONObject()
 
             DashboardSummary(
@@ -114,6 +100,58 @@ class FakeAuthRepository : AuthRepository {
                 energia = 0.0,
                 agua = 0.0
             )
+        }
+    }
+
+    override suspend fun createExpense(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        parcelas: Int,
+        observacoes: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(ApiConfig.BASE_URL + "despesa_create.php")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doInput = true
+                doOutput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val postData = buildString {
+                append("descricao=")
+                append(URLEncoder.encode(descricao, "UTF-8"))
+                append("&valor=")
+                append(URLEncoder.encode(valor, "UTF-8"))
+                append("&vencimento=")
+                append(URLEncoder.encode(vencimento, "UTF-8"))
+                append("&parcelas=")
+                append(URLEncoder.encode(parcelas.toString(), "UTF-8"))
+                append("&observacoes=")
+                append(URLEncoder.encode(observacoes, "UTF-8"))
+            }
+
+            BufferedWriter(OutputStreamWriter(conn.outputStream, Charsets.UTF_8)).use { writer ->
+                writer.write(postData)
+                writer.flush()
+            }
+
+            val response = readResponse(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                val message = json.optString("message", "Erro ao cadastrar despesa")
+                return@withContext Result.failure(Exception(message))
+            }
+
+            Result.success(json.optString("message", "Despesa cadastrada com sucesso"))
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro ao enviar despesa: ${e.message}"))
         }
     }
 
