@@ -1,5 +1,6 @@
 package com.technet.financeiro.data
 
+import com.technet.financeiro.model.ContaPagar
 import com.technet.financeiro.model.DashboardSummary
 import com.technet.financeiro.model.User
 import kotlinx.coroutines.Dispatchers
@@ -152,6 +153,56 @@ class FakeAuthRepository : AuthRepository {
             Result.success(json.optString("message", "Despesa cadastrada com sucesso"))
         } catch (e: Exception) {
             Result.failure(Exception("Erro ao enviar despesa: ${e.message}"))
+        }
+    }
+
+    override suspend fun listContasPagar(): Result<List<ContaPagar>> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(ApiConfig.BASE_URL + "contas_pagar_list.php")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                doInput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val response = readResponse(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Erro ao listar contas"))
+                )
+            }
+
+            val arr = json.optJSONArray("items")
+            val items = mutableListOf<ContaPagar>()
+
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    items.add(
+                        ContaPagar(
+                            id = o.optInt("id", 0),
+                            descricao = o.optString("descricao", "-"),
+                            dataVencimento = o.optString("data_vencimento", "-"),
+                            dataPagamento = o.optString("data_pagamento", "-"),
+                            valor = o.optDouble("valor", 0.0),
+                            valorPago = o.optDouble("valor_pago", 0.0),
+                            saldoAberto = o.optDouble("saldo_aberto", 0.0),
+                            status = o.optString("status", "pendente"),
+                            categoria = o.optString("categoria", "-"),
+                            fornecedorNome = o.optString("fornecedor_nome", "-")
+                        )
+                    )
+                }
+            }
+
+            Result.success(items)
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro ao carregar contas: ${e.message}"))
         }
     }
 
