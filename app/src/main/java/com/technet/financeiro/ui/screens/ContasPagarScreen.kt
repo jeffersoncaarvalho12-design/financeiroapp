@@ -1,15 +1,7 @@
 package com.technet.financeiro.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,13 +9,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,10 +34,13 @@ fun ContasPagarScreen(
             .fillMaxSize()
             .background(BackgroundSoft)
     ) {
+
+        // HEADER
         Card(
             shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
+
             Spacer(modifier = Modifier.height(18.dp))
 
             Row(
@@ -69,10 +59,12 @@ fun ContasPagarScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // SELETOR DE MÊS
             Card(
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
@@ -80,6 +72,7 @@ fun ContasPagarScreen(
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+
                     TextButton(onClick = onPreviousMonth) {
                         Icon(Icons.Default.KeyboardArrowLeft, contentDescription = null)
                     }
@@ -109,37 +102,20 @@ fun ContasPagarScreen(
 
         when {
             isLoading -> {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Carregando contas...")
                 }
             }
 
             !errorMessage.isNullOrBlank() -> {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(errorMessage, color = Color.Red)
                 }
             }
 
             items.isEmpty() -> {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("Nenhuma conta encontrada nesse mês")
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Nenhuma conta encontrada")
                 }
             }
 
@@ -148,13 +124,14 @@ fun ContasPagarScreen(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+
                     item { Spacer(modifier = Modifier.height(10.dp)) }
 
                     items(items) { conta ->
-                        ContaPagarCard(conta = conta)
+                        ContaPagarCard(conta)
                     }
 
-                    item { Spacer(modifier = Modifier.height(14.dp)) }
+                    item { Spacer(modifier = Modifier.height(20.dp)) }
                 }
             }
         }
@@ -163,20 +140,20 @@ fun ContasPagarScreen(
 
 @Composable
 private fun ContaPagarCard(conta: ContaPagar) {
+
+    var expanded by remember { mutableStateOf(false) }
+
     val sideColor = statusSideColor(conta.status)
     val badgeBg = statusBadgeBg(conta.status)
     val badgeFg = statusBadgeFg(conta.status)
-    val cardBg = Color.White
 
     Card(
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(cardBg)
-        ) {
+
+        Row {
+
             Box(
                 modifier = Modifier
                     .width(5.dp)
@@ -190,17 +167,16 @@ private fun ContaPagarCard(conta: ContaPagar) {
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
+
+                    Column(modifier = Modifier.weight(1f)) {
+
                         Text(
                             text = conta.descricao.ifBlank { "-" },
                             style = MaterialTheme.typography.titleMedium
@@ -213,17 +189,44 @@ private fun ContaPagarCard(conta: ContaPagar) {
                         )
                     }
 
-                    Card(shape = RoundedCornerShape(50.dp)) {
-                        Box(
-                            modifier = Modifier.background(badgeBg),
-                            contentAlignment = Alignment.Center
+                    Column(horizontalAlignment = Alignment.End) {
+
+                        Card(shape = RoundedCornerShape(50.dp)) {
+                            Box(
+                                modifier = Modifier.background(badgeBg)
+                            ) {
+                                Text(
+                                    text = formatStatus(conta.status),
+                                    color = badgeFg,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        TextButton(onClick = { expanded = true }) {
+                            Text("Ações")
+                        }
+
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
                         ) {
-                            Spacer(modifier = Modifier.width(80.dp))
-                            Spacer(modifier = Modifier.height(30.dp))
-                            Text(
-                                text = formatStatus(conta.status),
-                                color = badgeFg,
-                                style = MaterialTheme.typography.labelMedium
+
+                            DropdownMenuItem(
+                                text = { Text("Ver detalhes") },
+                                onClick = { expanded = false }
+                            )
+
+                            DropdownMenuItem(
+                                text = { Text("Marcar como pago") },
+                                onClick = { expanded = false }
+                            )
+
+                            DropdownMenuItem(
+                                text = { Text("Pagamento parcial") },
+                                onClick = { expanded = false }
                             )
                         }
                     }
@@ -234,7 +237,7 @@ private fun ContaPagarCard(conta: ContaPagar) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     InfoItem("Vencimento", formatDate(conta.dataVencimento))
-                    InfoItem("Pagamento", formatDateOrDash(conta.dataPagamento))
+                    InfoItem("Pagamento", formatDate(conta.dataPagamento))
                 }
 
                 InfoItem("Categoria", valorOuTraco(conta.categoria))
@@ -247,11 +250,7 @@ private fun ContaPagarCard(conta: ContaPagar) {
                     InfoItem("Pago", money(conta.valorPago))
                 }
 
-                InfoItem(
-                    "Falta pagar",
-                    money(faltaPagar(conta)),
-                    destaque = true
-                )
+                InfoItem("Falta pagar", money(faltaPagar(conta)), true)
 
                 Spacer(modifier = Modifier.height(10.dp))
             }
@@ -262,117 +261,74 @@ private fun ContaPagarCard(conta: ContaPagar) {
 }
 
 @Composable
-private fun InfoItem(
-    titulo: String,
-    valor: String,
-    destaque: Boolean = false
-) {
+private fun InfoItem(titulo: String, valor: String, destaque: Boolean = false) {
     Column {
+        Text(titulo.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
         Text(
-            text = titulo.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.Gray
-        )
-
-        Text(
-            text = valor,
-            style = if (destaque)
-                MaterialTheme.typography.titleMedium
-            else
-                MaterialTheme.typography.bodyLarge
+            valor,
+            style = if (destaque) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge
         )
     }
 }
 
-private fun statusSideColor(status: String): Color {
-    return when (status.trim().lowercase()) {
-        "pago" -> Color(0xFF23A55A)
-        "vencido" -> Color(0xFFE14D4D)
-        "parcial" -> Color(0xFFF0B429)
-        else -> Color(0xFF4E7AC7)
-    }
+// ===== HELPERS =====
+
+private fun statusSideColor(status: String): Color = when (status.lowercase()) {
+    "pago" -> Color(0xFF23A55A)
+    "vencido" -> Color(0xFFE14D4D)
+    "parcial" -> Color(0xFFF0B429)
+    else -> Color(0xFF4E7AC7)
 }
 
-private fun statusBadgeBg(status: String): Color {
-    return when (status.trim().lowercase()) {
-        "pago" -> Color(0xFFD9F5E3)
-        "vencido" -> Color(0xFFF9DADA)
-        "parcial" -> Color(0xFFFFEFC9)
-        else -> Color(0xFFE7EEFA)
-    }
+private fun statusBadgeBg(status: String): Color = when (status.lowercase()) {
+    "pago" -> Color(0xFFD9F5E3)
+    "vencido" -> Color(0xFFF9DADA)
+    "parcial" -> Color(0xFFFFEFC9)
+    else -> Color(0xFFE7EEFA)
 }
 
-private fun statusBadgeFg(status: String): Color {
-    return when (status.trim().lowercase()) {
-        "pago" -> Color(0xFF1E7D3A)
-        "vencido" -> Color(0xFFBA2E2E)
-        "parcial" -> Color(0xFF9A6A00)
-        else -> Color(0xFF2E5EAA)
-    }
+private fun statusBadgeFg(status: String): Color = when (status.lowercase()) {
+    "pago" -> Color(0xFF1E7D3A)
+    "vencido" -> Color(0xFFBA2E2E)
+    "parcial" -> Color(0xFF9A6A00)
+    else -> Color(0xFF2E5EAA)
 }
 
-private fun fornecedorOuTraco(value: String?): String {
-    if (value == null) return "-"
-    val v = value.trim()
-    return if (v.isBlank() || v.lowercase() == "null") "-" else v
-}
+private fun fornecedorOuTraco(value: String?): String =
+    if (value.isNullOrBlank() || value == "null") "-" else value
 
-private fun valorOuTraco(value: String?): String {
-    if (value == null) return "-"
-    val v = value.trim()
-    return if (v.isBlank() || v.lowercase() == "null") "-" else v
-}
+private fun valorOuTraco(value: String?): String =
+    if (value.isNullOrBlank() || value == "null") "-" else value
 
 private fun formatDate(value: String?): String {
-    if (value == null) return "-"
-    val v = value.trim()
-    if (v.isBlank() || v.lowercase() == "null") return "-"
-    return if (v.length >= 10 && v[4] == '-' && v[7] == '-') {
-        "${v.substring(8, 10)}/${v.substring(5, 7)}/${v.substring(0, 4)}"
-    } else {
-        v
-    }
+    if (value.isNullOrBlank() || value == "null") return "-"
+    return if (value.length >= 10) {
+        "${value.substring(8, 10)}/${value.substring(5, 7)}/${value.substring(0, 4)}"
+    } else value
 }
 
-private fun formatDateOrDash(value: String?): String {
-    return formatDate(value)
-}
+private fun faltaPagar(conta: ContaPagar): Double =
+    if (conta.saldoAberto > 0) conta.saldoAberto else conta.valor - conta.valorPago
 
-private fun formatStatus(status: String): String {
-    val v = status.trim()
-    if (v.isBlank()) return "Pendente"
-    return v.replaceFirstChar { it.uppercase() }
-}
+private fun money(value: Double): String =
+    "R$ " + String.format("%,.2f", value)
+        .replace(",", "X").replace(".", ",").replace("X", ".")
 
-private fun faltaPagar(conta: ContaPagar): Double {
-    return when {
-        conta.saldoAberto > 0.0 -> conta.saldoAberto
-        conta.valor > conta.valorPago -> conta.valor - conta.valorPago
-        else -> 0.0
-    }
-}
+private fun formatStatus(status: String): String =
+    status.replaceFirstChar { it.uppercase() }
 
-private fun money(value: Double): String {
-    return "R$ " + String.format("%,.2f", value)
-        .replace(",", "X")
-        .replace(".", ",")
-        .replace("X", ".")
-}
-
-private fun nomeMes(mes: Int): String {
-    return when (mes) {
-        1 -> "Janeiro"
-        2 -> "Fevereiro"
-        3 -> "Março"
-        4 -> "Abril"
-        5 -> "Maio"
-        6 -> "Junho"
-        7 -> "Julho"
-        8 -> "Agosto"
-        9 -> "Setembro"
-        10 -> "Outubro"
-        11 -> "Novembro"
-        12 -> "Dezembro"
-        else -> "Mês"
-    }
+private fun nomeMes(mes: Int): String = when (mes) {
+    1 -> "Janeiro"
+    2 -> "Fevereiro"
+    3 -> "Março"
+    4 -> "Abril"
+    5 -> "Maio"
+    6 -> "Junho"
+    7 -> "Julho"
+    8 -> "Agosto"
+    9 -> "Setembro"
+    10 -> "Outubro"
+    11 -> "Novembro"
+    12 -> "Dezembro"
+    else -> "Mês"
 }
