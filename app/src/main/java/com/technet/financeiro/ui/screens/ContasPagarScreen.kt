@@ -1,7 +1,15 @@
 package com.technet.financeiro.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,8 +17,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Button
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,18 +50,18 @@ fun ContasPagarScreen(
     onNextMonth: () -> Unit,
     onBack: () -> Unit
 ) {
+    var contaSelecionada by remember { mutableStateOf<ContaPagar?>(null) }
+    var acaoMensagem by remember { mutableStateOf<String?>(null) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundSoft)
     ) {
-
-        // HEADER
         Card(
             shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-
             Spacer(modifier = Modifier.height(18.dp))
 
             Row(
@@ -59,12 +80,10 @@ fun ContasPagarScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // SELETOR DE MÊS
             Card(
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
@@ -72,7 +91,6 @@ fun ContasPagarScreen(
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     TextButton(onClick = onPreviousMonth) {
                         Icon(Icons.Default.KeyboardArrowLeft, contentDescription = null)
                     }
@@ -124,11 +142,21 @@ fun ContasPagarScreen(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-
                     item { Spacer(modifier = Modifier.height(10.dp)) }
 
                     items(items) { conta ->
-                        ContaPagarCard(conta)
+                        ContaPagarCard(
+                            conta = conta,
+                            onVerDetalhes = {
+                                contaSelecionada = conta
+                            },
+                            onMarcarPago = {
+                                acaoMensagem = "Ação selecionada: Marcar como pago"
+                            },
+                            onPagamentoParcial = {
+                                acaoMensagem = "Ação selecionada: Pagamento parcial"
+                            }
+                        )
                     }
 
                     item { Spacer(modifier = Modifier.height(20.dp)) }
@@ -136,11 +164,61 @@ fun ContasPagarScreen(
             }
         }
     }
+
+    if (contaSelecionada != null) {
+        val conta = contaSelecionada!!
+
+        AlertDialog(
+            onDismissRequest = { contaSelecionada = null },
+            confirmButton = {
+                TextButton(onClick = { contaSelecionada = null }) {
+                    Text("Fechar")
+                }
+            },
+            title = {
+                Text("Detalhes da conta")
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DetalheLinha("Descrição", conta.descricao.ifBlank { "-" })
+                    DetalheLinha("Fornecedor", fornecedorOuTraco(conta.fornecedorNome))
+                    DetalheLinha("Vencimento", formatDate(conta.dataVencimento))
+                    DetalheLinha("Pagamento", formatDate(conta.dataPagamento))
+                    DetalheLinha("Categoria", valorOuTraco(conta.categoria))
+                    DetalheLinha("Total", money(conta.valor))
+                    DetalheLinha("Pago", money(conta.valorPago))
+                    DetalheLinha("Falta pagar", money(faltaPagar(conta)))
+                    DetalheLinha("Status", formatStatus(conta.status))
+                }
+            }
+        )
+    }
+
+    if (acaoMensagem != null) {
+        AlertDialog(
+            onDismissRequest = { acaoMensagem = null },
+            confirmButton = {
+                Button(onClick = { acaoMensagem = null }) {
+                    Text("OK")
+                }
+            },
+            title = {
+                Text("Ação")
+            },
+            text = {
+                Text(acaoMensagem!!)
+            }
+        )
+    }
 }
 
 @Composable
-private fun ContaPagarCard(conta: ContaPagar) {
-
+private fun ContaPagarCard(
+    conta: ContaPagar,
+    onVerDetalhes: () -> Unit,
+    onMarcarPago: () -> Unit,
+    onPagamentoParcial: () -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
 
     val sideColor = statusSideColor(conta.status)
@@ -151,9 +229,7 @@ private fun ContaPagarCard(conta: ContaPagar) {
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-
         Row {
-
             Box(
                 modifier = Modifier
                     .width(5.dp)
@@ -167,16 +243,13 @@ private fun ContaPagarCard(conta: ContaPagar) {
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-
                     Column(modifier = Modifier.weight(1f)) {
-
                         Text(
                             text = conta.descricao.ifBlank { "-" },
                             style = MaterialTheme.typography.titleMedium
@@ -190,7 +263,6 @@ private fun ContaPagarCard(conta: ContaPagar) {
                     }
 
                     Column(horizontalAlignment = Alignment.End) {
-
                         Card(shape = RoundedCornerShape(50.dp)) {
                             Box(
                                 modifier = Modifier.background(badgeBg)
@@ -213,20 +285,28 @@ private fun ContaPagarCard(conta: ContaPagar) {
                             expanded = expanded,
                             onDismissRequest = { expanded = false }
                         ) {
-
                             DropdownMenuItem(
                                 text = { Text("Ver detalhes") },
-                                onClick = { expanded = false }
+                                onClick = {
+                                    expanded = false
+                                    onVerDetalhes()
+                                }
                             )
 
                             DropdownMenuItem(
                                 text = { Text("Marcar como pago") },
-                                onClick = { expanded = false }
+                                onClick = {
+                                    expanded = false
+                                    onMarcarPago()
+                                }
                             )
 
                             DropdownMenuItem(
                                 text = { Text("Pagamento parcial") },
-                                onClick = { expanded = false }
+                                onClick = {
+                                    expanded = false
+                                    onPagamentoParcial()
+                                }
                             )
                         }
                     }
@@ -261,9 +341,17 @@ private fun ContaPagarCard(conta: ContaPagar) {
 }
 
 @Composable
-private fun InfoItem(titulo: String, valor: String, destaque: Boolean = false) {
+private fun InfoItem(
+    titulo: String,
+    valor: String,
+    destaque: Boolean = false
+) {
     Column {
-        Text(titulo.uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+        Text(
+            titulo.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.Gray
+        )
         Text(
             valor,
             style = if (destaque) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge
@@ -271,7 +359,23 @@ private fun InfoItem(titulo: String, valor: String, destaque: Boolean = false) {
     }
 }
 
-// ===== HELPERS =====
+@Composable
+private fun DetalheLinha(
+    titulo: String,
+    valor: String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = titulo,
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.Gray
+        )
+        Text(
+            text = valor,
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
+}
 
 private fun statusSideColor(status: String): Color = when (status.lowercase()) {
     "pago" -> Color(0xFF23A55A)
@@ -312,7 +416,9 @@ private fun faltaPagar(conta: ContaPagar): Double =
 
 private fun money(value: Double): String =
     "R$ " + String.format("%,.2f", value)
-        .replace(",", "X").replace(".", ",").replace("X", ".")
+        .replace(",", "X")
+        .replace(".", ",")
+        .replace("X", ".")
 
 private fun formatStatus(status: String): String =
     status.replaceFirstChar { it.uppercase() }
