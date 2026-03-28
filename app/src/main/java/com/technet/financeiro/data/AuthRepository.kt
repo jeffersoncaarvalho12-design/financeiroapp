@@ -15,5 +15,5 @@ interface AuthRepository {
         observacoes: String
     ): Result<String>
 
-    suspend fun listContasPagar(): Result<List<ContaPagar>>
+    suspend fun listContasPagar(mes: Int, ano: Int): Result<List<ContaPagar>>
 }
