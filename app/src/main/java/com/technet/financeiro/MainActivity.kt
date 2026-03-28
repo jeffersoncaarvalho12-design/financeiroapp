@@ -7,6 +7,7 @@ import androidx.activity.viewModels
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.technet.financeiro.ui.screens.DashboardScreen
 import com.technet.financeiro.ui.screens.LoginScreen
+import com.technet.financeiro.ui.screens.NewExpenseScreen
 import com.technet.financeiro.ui.theme.FinanceiroTechNetTheme
 
 class MainActivity : ComponentActivity() {
@@ -20,18 +21,34 @@ class MainActivity : ComponentActivity() {
             FinanceiroTechNetTheme {
                 val state = viewModel.uiState.collectAsStateWithLifecycle().value
 
-                if (state.isLoggedIn && state.user != null && state.dashboard != null) {
-                    DashboardScreen(
-                        user = state.user,
-                        summary = state.dashboard,
-                        onLogout = viewModel::logout
-                    )
-                } else {
-                    LoginScreen(
-                        isLoading = state.isLoading,
-                        errorMessage = state.errorMessage,
-                        onLogin = viewModel::login
-                    )
+                when {
+                    !state.isLoggedIn || state.user == null || state.dashboard == null -> {
+                        LoginScreen(
+                            isLoading = state.isLoading,
+                            errorMessage = state.errorMessage,
+                            onLogin = viewModel::login
+                        )
+                    }
+
+                    state.currentScreen == AppScreen.NEW_EXPENSE -> {
+                        NewExpenseScreen(
+                            isSaving = state.isSavingExpense,
+                            errorMessage = state.errorMessage,
+                            onBack = viewModel::backToDashboard,
+                            onSave = viewModel::createExpense
+                        )
+                    }
+
+                    else -> {
+                        DashboardScreen(
+                            user = state.user,
+                            summary = state.dashboard,
+                            message = state.expenseMessage,
+                            onOpenNewExpense = viewModel::openNewExpense,
+                            onClearMessage = viewModel::clearMessages,
+                            onLogout = viewModel::logout
+                        )
+                    }
                 }
             }
         }
