@@ -6,4 +6,11 @@ import com.technet.financeiro.model.User
 interface AuthRepository {
     suspend fun login(email: String, password: String): Result<User>
     suspend fun dashboardSummary(): DashboardSummary
+    suspend fun createExpense(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        parcelas: Int,
+        observacoes: String
+    ): Result<String>
 }
