@@ -59,6 +59,7 @@ fun DashboardScreen(
     summary: DashboardSummary,
     message: String?,
     onOpenNewExpense: () -> Unit,
+    onOpenContasPagar: () -> Unit,
     onClearMessage: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -93,9 +94,7 @@ fun DashboardScreen(
             .background(BackgroundSoft),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            Spacer(modifier = Modifier.height(12.dp))
-        }
+        item { Spacer(modifier = Modifier.height(12.dp)) }
 
         item {
             Card(
@@ -134,8 +133,8 @@ fun DashboardScreen(
                         Text("Nova despesa")
                     }
 
-                    TextButton(onClick = {}) {
-                        Text("Contas em breve")
+                    TextButton(onClick = onOpenContasPagar) {
+                        Text("Contas a pagar")
                     }
                 }
 
@@ -225,9 +224,7 @@ fun DashboardScreen(
             }
         }
 
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        item { Spacer(modifier = Modifier.height(16.dp)) }
     }
 }
 
