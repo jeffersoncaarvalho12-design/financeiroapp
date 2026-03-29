@@ -202,20 +202,18 @@ class MainViewModel(
         }
     }
 
+    private fun removerMovimentoDaLista(movimentoId: Int) {
+        _uiState.value = _uiState.value.copy(
+            conciliacao = _uiState.value.conciliacao.filterNot { it.id == movimentoId },
+            errorMessage = null
+        )
+    }
+
     fun conciliarMovimento(movimentoId: Int, contaId: Int) {
         viewModelScope.launch {
             repository.conciliarMovimento(movimentoId, contaId)
                 .onSuccess {
-                    val atualizada = _uiState.value.conciliacao.map { item ->
-                        if (item.id == movimentoId) {
-                            item.copy(status = "conciliado")
-                        } else item
-                    }
-
-                    _uiState.value = _uiState.value.copy(
-                        conciliacao = atualizada,
-                        errorMessage = null
-                    )
+                    removerMovimentoDaLista(movimentoId)
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
@@ -245,20 +243,9 @@ class MainViewModel(
                 conciliarAposCriar = conciliarAposCriar
             ).onSuccess {
                 if (conciliarAposCriar) {
-                    val atualizada = _uiState.value.conciliacao.map { item ->
-                        if (item.id == movimentoId) {
-                            item.copy(status = "conciliado")
-                        } else item
-                    }
-
-                    _uiState.value = _uiState.value.copy(
-                        conciliacao = atualizada,
-                        errorMessage = null
-                    )
+                    removerMovimentoDaLista(movimentoId)
                 } else {
-                    _uiState.value = _uiState.value.copy(
-                        errorMessage = null
-                    )
+                    _uiState.value = _uiState.value.copy(errorMessage = null)
                 }
 
                 loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
@@ -290,20 +277,9 @@ class MainViewModel(
                 conciliarAposCriar = conciliarAposCriar
             ).onSuccess {
                 if (conciliarAposCriar) {
-                    val atualizada = _uiState.value.conciliacao.map { item ->
-                        if (item.id == movimentoId) {
-                            item.copy(status = "conciliado")
-                        } else item
-                    }
-
-                    _uiState.value = _uiState.value.copy(
-                        conciliacao = atualizada,
-                        errorMessage = null
-                    )
+                    removerMovimentoDaLista(movimentoId)
                 } else {
-                    _uiState.value = _uiState.value.copy(
-                        errorMessage = null
-                    )
+                    _uiState.value = _uiState.value.copy(errorMessage = null)
                 }
 
                 loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
