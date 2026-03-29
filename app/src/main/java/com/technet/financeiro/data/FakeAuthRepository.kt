@@ -79,11 +79,15 @@ class FakeAuthRepository : AuthRepository {
 
     override suspend fun listContasPagar(
         mes: Int,
-        ano: Int
+        ano: Int,
+        busca: String,
+        status: String,
+        tipo: String
     ): Result<List<ContaPagar>> = Result.success(emptyList())
 
-    override suspend fun markContaAsPaid(contaId: Int): Result<String> =
-        Result.success("ok")
+    override suspend fun markContaAsPaid(
+        contaId: Int
+    ): Result<String> = Result.success("ok")
 
     override suspend fun registerContaPayment(
         contaId: Int,
