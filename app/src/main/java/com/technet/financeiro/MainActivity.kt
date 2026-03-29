@@ -49,7 +49,8 @@ class MainActivity : ComponentActivity() {
                             ano = state.contasAno,
                             onPreviousMonth = viewModel::previousMonthContas,
                             onNextMonth = viewModel::nextMonthContas,
-                            onBack = viewModel::backToDashboard
+                            onBack = viewModel::backToDashboard,
+                            onMarcarPagoReal = viewModel::markContaAsPaid
                         )
                     }
 
