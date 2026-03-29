@@ -258,6 +258,67 @@ class FakeAuthRepository : AuthRepository {
         }
     }
 
+    override suspend fun registerContaPayment(
+        contaId: Int,
+        valor: String,
+        dataPagamento: String,
+        observacoes: String
+    ): Result<ContaPagarPaymentResult> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(ApiConfig.BASE_URL + "conta_registrar_pagamento.php")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doInput = true
+                doOutput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val postData = buildString {
+                append("conta_id=")
+                append(URLEncoder.encode(contaId.toString(), "UTF-8"))
+                append("&valor=")
+                append(URLEncoder.encode(valor, "UTF-8"))
+                append("&data_pagamento=")
+                append(URLEncoder.encode(dataPagamento, "UTF-8"))
+                append("&observacoes=")
+                append(URLEncoder.encode(observacoes, "UTF-8"))
+            }
+
+            BufferedWriter(OutputStreamWriter(conn.outputStream, Charsets.UTF_8)).use { writer ->
+                writer.write(postData)
+                writer.flush()
+            }
+
+            val response = readResponse(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Erro ao registrar pagamento"))
+                )
+            }
+
+            val data = json.optJSONObject("data")
+                ?: return@withContext Result.failure(Exception("Resposta inválida da API"))
+
+            Result.success(
+                ContaPagarPaymentResult(
+                    contaId = data.optInt("conta_id", contaId),
+                    valorPago = data.optDouble("valor_pago", 0.0),
+                    saldoAberto = data.optDouble("saldo_aberto", 0.0),
+                    status = data.optString("status", "parcial"),
+                    dataPagamento = data.optString("data_pagamento", dataPagamento)
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro ao registrar pagamento: ${e.message}"))
+        }
+    }
+
     private fun readResponse(conn: HttpURLConnection): String {
         val stream = if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
         return BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { reader ->
