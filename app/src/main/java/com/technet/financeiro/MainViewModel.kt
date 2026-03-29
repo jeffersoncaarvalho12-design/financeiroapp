@@ -270,6 +270,51 @@ class MainViewModel(
         }
     }
 
+    fun criarReceitaDaConciliacao(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        categoriaId: Int,
+        observacoes: String,
+        movimentoId: Int,
+        conciliarAposCriar: Boolean
+    ) {
+        viewModelScope.launch {
+            repository.criarReceitaDaConciliacao(
+                descricao = descricao,
+                valor = valor,
+                vencimento = vencimento,
+                categoriaId = categoriaId,
+                observacoes = observacoes,
+                movimentoId = movimentoId,
+                conciliarAposCriar = conciliarAposCriar
+            ).onSuccess {
+                if (conciliarAposCriar) {
+                    val atualizada = _uiState.value.conciliacao.map { item ->
+                        if (item.id == movimentoId) {
+                            item.copy(status = "conciliado")
+                        } else item
+                    }
+
+                    _uiState.value = _uiState.value.copy(
+                        conciliacao = atualizada,
+                        errorMessage = null
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = null
+                    )
+                }
+
+                loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = error.message ?: "Erro ao criar receita"
+                )
+            }
+        }
+    }
+
     fun markContaAsPaid(contaId: Int) {
         viewModelScope.launch {
             repository.markContaAsPaid(contaId)
