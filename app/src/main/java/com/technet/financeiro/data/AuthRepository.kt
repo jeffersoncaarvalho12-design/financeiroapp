@@ -1,8 +1,17 @@
 package com.technet.financeiro.data
 
+import com.technet.financeiro.model.ConciliacaoItem
 import com.technet.financeiro.model.ContaPagar
 import com.technet.financeiro.model.DashboardSummary
 import com.technet.financeiro.model.User
+
+data class ContaPagarPaymentResult(
+    val contaId: Int,
+    val valorPago: Double,
+    val saldoAberto: Double,
+    val status: String,
+    val dataPagamento: String
+)
 
 interface AuthRepository {
     suspend fun login(email: String, password: String): Result<User>
@@ -32,12 +41,9 @@ interface AuthRepository {
         dataPagamento: String,
         observacoes: String
     ): Result<ContaPagarPaymentResult>
-}
 
-data class ContaPagarPaymentResult(
-    val contaId: Int,
-    val valorPago: Double,
-    val saldoAberto: Double,
-    val status: String,
-    val dataPagamento: String
-)
+    suspend fun listConciliacao(
+        mes: Int,
+        ano: Int
+    ): Result<List<ConciliacaoItem>>
+}
