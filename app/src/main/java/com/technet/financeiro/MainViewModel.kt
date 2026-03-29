@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.technet.financeiro.data.AuthRepository
 import com.technet.financeiro.data.FakeAuthRepository
+import com.technet.financeiro.model.CategoriaItem
 import com.technet.financeiro.model.ConciliacaoItem
 import com.technet.financeiro.model.ContaPagar
 import com.technet.financeiro.model.DashboardSummary
@@ -37,6 +38,7 @@ data class MainUiState(
     val isLoadingContas: Boolean = false,
     val conciliacao: List<ConciliacaoItem> = emptyList(),
     val isLoadingConciliacao: Boolean = false,
+    val categorias: List<CategoriaItem> = emptyList(),
     val contasMes: Int = Calendar.getInstance().get(Calendar.MONTH) + 1,
     val contasAno: Int = Calendar.getInstance().get(Calendar.YEAR)
 )
@@ -66,6 +68,7 @@ class MainViewModel(
                         isLoggedIn = true,
                         currentScreen = AppScreen.DASHBOARD
                     )
+                    carregarCategoriasSilencioso()
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
@@ -93,6 +96,7 @@ class MainViewModel(
         val state = _uiState.value
         loadConciliacao(state.contasMes, state.contasAno)
         loadContasPagarSilencioso(state.contasMes, state.contasAno)
+        carregarCategoriasSilencioso()
     }
 
     fun previousMonthContas() {
@@ -186,6 +190,18 @@ class MainViewModel(
         }
     }
 
+    private fun carregarCategoriasSilencioso() {
+        viewModelScope.launch {
+            repository.listCategorias()
+                .onSuccess { items ->
+                    _uiState.value = _uiState.value.copy(
+                        categorias = items
+                    )
+                }
+                .onFailure { }
+        }
+    }
+
     fun conciliarMovimento(movimentoId: Int, contaId: Int) {
         viewModelScope.launch {
             repository.conciliarMovimento(movimentoId, contaId)
@@ -206,6 +222,51 @@ class MainViewModel(
                         errorMessage = error.message ?: "Erro ao conciliar movimento"
                     )
                 }
+        }
+    }
+
+    fun criarDespesaDaConciliacao(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        categoriaId: Int,
+        observacoes: String,
+        movimentoId: Int,
+        conciliarAposCriar: Boolean
+    ) {
+        viewModelScope.launch {
+            repository.criarDespesaDaConciliacao(
+                descricao = descricao,
+                valor = valor,
+                vencimento = vencimento,
+                categoriaId = categoriaId,
+                observacoes = observacoes,
+                movimentoId = movimentoId,
+                conciliarAposCriar = conciliarAposCriar
+            ).onSuccess {
+                if (conciliarAposCriar) {
+                    val atualizada = _uiState.value.conciliacao.map { item ->
+                        if (item.id == movimentoId) {
+                            item.copy(status = "conciliado")
+                        } else item
+                    }
+
+                    _uiState.value = _uiState.value.copy(
+                        conciliacao = atualizada,
+                        errorMessage = null
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = null
+                    )
+                }
+
+                loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = error.message ?: "Erro ao criar despesa"
+                )
+            }
         }
     }
 
