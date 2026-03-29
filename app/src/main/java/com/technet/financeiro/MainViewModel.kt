@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.technet.financeiro.data.AuthRepository
 import com.technet.financeiro.data.FakeAuthRepository
+import com.technet.financeiro.model.ConciliacaoItem
 import com.technet.financeiro.model.ContaPagar
 import com.technet.financeiro.model.DashboardSummary
 import com.technet.financeiro.model.User
@@ -19,7 +20,8 @@ import java.util.Locale
 enum class AppScreen {
     DASHBOARD,
     NEW_EXPENSE,
-    CONTAS_PAGAR
+    CONTAS_PAGAR,
+    CONCILIACAO
 }
 
 data class MainUiState(
@@ -33,6 +35,8 @@ data class MainUiState(
     val expenseMessage: String? = null,
     val contasPagar: List<ContaPagar> = emptyList(),
     val isLoadingContas: Boolean = false,
+    val conciliacao: List<ConciliacaoItem> = emptyList(),
+    val isLoadingConciliacao: Boolean = false,
     val contasMes: Int = Calendar.getInstance().get(Calendar.MONTH) + 1,
     val contasAno: Int = Calendar.getInstance().get(Calendar.YEAR)
 )
@@ -85,6 +89,11 @@ class MainViewModel(
         loadContasPagar(state.contasMes, state.contasAno)
     }
 
+    fun openConciliacao() {
+        val state = _uiState.value
+        loadConciliacao(state.contasMes, state.contasAno)
+    }
+
     fun previousMonthContas() {
         val state = _uiState.value
         var mes = state.contasMes - 1
@@ -133,6 +142,32 @@ class MainViewModel(
                     _uiState.value = _uiState.value.copy(
                         isLoadingContas = false,
                         errorMessage = error.message ?: "Erro ao listar contas."
+                    )
+                }
+        }
+    }
+
+    private fun loadConciliacao(mes: Int, ano: Int) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                currentScreen = AppScreen.CONCILIACAO,
+                isLoadingConciliacao = true,
+                errorMessage = null,
+                contasMes = mes,
+                contasAno = ano
+            )
+
+            repository.listConciliacao(mes, ano)
+                .onSuccess { items ->
+                    _uiState.value = _uiState.value.copy(
+                        conciliacao = items,
+                        isLoadingConciliacao = false
+                    )
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingConciliacao = false,
+                        errorMessage = error.message ?: "Erro ao carregar conciliação."
                     )
                 }
         }
