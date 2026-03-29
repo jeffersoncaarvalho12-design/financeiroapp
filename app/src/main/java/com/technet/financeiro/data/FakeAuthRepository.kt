@@ -1,10 +1,17 @@
 package com.technet.financeiro.data
 
-import com.technet.financeiro.model.*
+import com.technet.financeiro.model.CategoriaItem
+import com.technet.financeiro.model.ConciliacaoItem
+import com.technet.financeiro.model.ContaPagar
+import com.technet.financeiro.model.DashboardSummary
+import com.technet.financeiro.model.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.*
+import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -21,9 +28,11 @@ class FakeAuthRepository : AuthRepository {
                 doInput = true
                 doOutput = true
                 setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                setRequestProperty("Accept", "application/json")
             }
 
-            val postData = "email=${URLEncoder.encode(email, "UTF-8")}&password=${URLEncoder.encode(password, "UTF-8")}"
+            val postData =
+                "email=${URLEncoder.encode(email, "UTF-8")}&password=${URLEncoder.encode(password, "UTF-8")}"
 
             BufferedWriter(OutputStreamWriter(conn.outputStream)).use {
                 it.write(postData)
@@ -31,26 +40,34 @@ class FakeAuthRepository : AuthRepository {
 
             val setCookie = conn.headerFields["Set-Cookie"]
             if (!setCookie.isNullOrEmpty()) {
-                sessionCookie = setCookie.joinToString("; ") { it.substringBefore(";") }
+                sessionCookie = setCookie.joinToString("; ") { cookie ->
+                    cookie.substringBefore(";")
+                }
             }
 
             val response = read(conn)
             val json = JSONObject(response)
 
             if (!json.optBoolean("success")) {
-                return@withContext Result.failure(Exception(json.optString("message")))
+                return@withContext Result.failure(Exception(json.optString("message", "Falha no login")))
             }
 
             val u = json.getJSONObject("user")
 
-            Result.success(User(u.getString("name"), u.getString("email")))
-
+            Result.success(
+                User(
+                    u.optString("name", ""),
+                    u.optString("email", "")
+                )
+            )
         } catch (e: Exception) {
-            Result.failure(Exception(e.message))
+            Result.failure(Exception(e.message ?: "Erro no login"))
         }
     }
 
-    override suspend fun dashboardSummary(): DashboardSummary = DashboardSummary(0.0,0.0,0.0,0.0,0.0)
+    override suspend fun dashboardSummary(): DashboardSummary {
+        return DashboardSummary(0.0, 0.0, 0.0, 0.0, 0.0)
+    }
 
     override suspend fun createExpense(
         descricao: String,
@@ -60,8 +77,10 @@ class FakeAuthRepository : AuthRepository {
         observacoes: String
     ): Result<String> = Result.success("ok")
 
-    override suspend fun listContasPagar(mes: Int, ano: Int): Result<List<ContaPagar>> =
-        Result.success(emptyList())
+    override suspend fun listContasPagar(
+        mes: Int,
+        ano: Int
+    ): Result<List<ContaPagar>> = Result.success(emptyList())
 
     override suspend fun markContaAsPaid(contaId: Int): Result<String> =
         Result.success("ok")
@@ -76,18 +95,49 @@ class FakeAuthRepository : AuthRepository {
 
     override suspend fun listConciliacao(
         mes: Int,
-        ano: Int
+        ano: Int,
+        busca: String,
+        status: String,
+        tipo: String
     ): Result<List<ConciliacaoItem>> = withContext(Dispatchers.IO) {
-
         try {
-            val url = URL(ApiConfig.BASE_URL + "conciliacao_list.php?mes=$mes&ano=$ano")
+            val queryParts = mutableListOf(
+                "mes=${URLEncoder.encode(mes.toString(), "UTF-8")}",
+                "ano=${URLEncoder.encode(ano.toString(), "UTF-8")}"
+            )
+
+            if (busca.isNotBlank()) {
+                queryParts.add("busca=${URLEncoder.encode(busca, "UTF-8")}")
+            }
+
+            if (status.isNotBlank()) {
+                queryParts.add("status=${URLEncoder.encode(status, "UTF-8")}")
+            }
+
+            if (tipo.isNotBlank()) {
+                queryParts.add("tipo=${URLEncoder.encode(tipo, "UTF-8")}")
+            }
+
+            val queryString = queryParts.joinToString("&")
+            val url = URL(ApiConfig.BASE_URL + "conciliacao_list.php?$queryString")
+
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
+                doInput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Accept", "application/json")
                 sessionCookie?.let { setRequestProperty("Cookie", it) }
             }
 
             val response = read(conn)
             val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Erro ao carregar conciliação"))
+                )
+            }
 
             val list = mutableListOf<ConciliacaoItem>()
             val arr = json.optJSONArray("items")
@@ -111,9 +161,8 @@ class FakeAuthRepository : AuthRepository {
             }
 
             Result.success(list)
-
         } catch (e: Exception) {
-            Result.failure(Exception(e.message))
+            Result.failure(Exception(e.message ?: "Erro na conciliação"))
         }
     }
 
@@ -146,7 +195,11 @@ class FakeAuthRepository : AuthRepository {
     ): Result<String> = Result.success("ok")
 
     private fun read(conn: HttpURLConnection): String {
-        val stream = if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
-        return BufferedReader(InputStreamReader(stream)).readText()
+        val stream =
+            if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
+
+        return BufferedReader(InputStreamReader(stream)).use { reader ->
+            reader.readText()
+        }
     }
 }
