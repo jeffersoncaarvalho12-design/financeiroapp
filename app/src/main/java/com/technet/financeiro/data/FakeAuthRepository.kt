@@ -1,5 +1,6 @@
 package com.technet.financeiro.data
 
+import com.technet.financeiro.model.CategoriaItem
 import com.technet.financeiro.model.ConciliacaoItem
 import com.technet.financeiro.model.ContaPagar
 import com.technet.financeiro.model.DashboardSummary
@@ -411,6 +412,107 @@ class FakeAuthRepository : AuthRepository {
             Result.success(json.optString("message", "Movimento conciliado com sucesso"))
         } catch (e: Exception) {
             Result.failure(Exception("Erro ao conciliar movimento: ${e.message}"))
+        }
+    }
+
+    override suspend fun listCategorias(): Result<List<CategoriaItem>> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(ApiConfig.BASE_URL + "categorias_list.php")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                doInput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val response = readResponse(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Erro ao listar categorias"))
+                )
+            }
+
+            val arr = json.optJSONArray("items")
+            val list = mutableListOf<CategoriaItem>()
+
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    list.add(
+                        CategoriaItem(
+                            id = o.optInt("id"),
+                            nome = o.optString("nome")
+                        )
+                    )
+                }
+            }
+
+            Result.success(list)
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro ao carregar categorias: ${e.message}"))
+        }
+    }
+
+    override suspend fun criarDespesaDaConciliacao(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        categoriaId: Int,
+        observacoes: String,
+        movimentoId: Int,
+        conciliarAposCriar: Boolean
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(ApiConfig.BASE_URL + "conciliacao_criar_despesa.php")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doInput = true
+                doOutput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val postData = buildString {
+                append("descricao=")
+                append(URLEncoder.encode(descricao, "UTF-8"))
+                append("&valor=")
+                append(URLEncoder.encode(valor, "UTF-8"))
+                append("&vencimento=")
+                append(URLEncoder.encode(vencimento, "UTF-8"))
+                append("&categoria_id=")
+                append(URLEncoder.encode(categoriaId.toString(), "UTF-8"))
+                append("&observacoes=")
+                append(URLEncoder.encode(observacoes, "UTF-8"))
+                append("&movimento_id=")
+                append(URLEncoder.encode(movimentoId.toString(), "UTF-8"))
+                append("&conciliar_apos_criar=")
+                append(if (conciliarAposCriar) "1" else "0")
+            }
+
+            BufferedWriter(OutputStreamWriter(conn.outputStream, Charsets.UTF_8)).use { writer ->
+                writer.write(postData)
+                writer.flush()
+            }
+
+            val response = readResponse(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Erro ao criar despesa"))
+                )
+            }
+
+            Result.success(json.optString("message", "Despesa criada com sucesso"))
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro ao criar despesa da conciliação: ${e.message}"))
         }
     }
 
