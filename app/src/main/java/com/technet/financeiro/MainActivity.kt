@@ -60,10 +60,12 @@ class MainActivity : ComponentActivity() {
                         ConciliacaoScreen(
                             items = state.conciliacao,
                             contasDisponiveis = state.contasPagar,
+                            categorias = state.categorias,
                             isLoading = state.isLoadingConciliacao,
                             errorMessage = state.errorMessage,
                             onBack = viewModel::backToDashboard,
-                            onConciliar = viewModel::conciliarMovimento
+                            onConciliar = viewModel::conciliarMovimento,
+                            onCriarDespesa = viewModel::criarDespesaDaConciliacao
                         )
                     }
 
