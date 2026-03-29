@@ -51,9 +51,9 @@ fun ContasPagarScreen(
     ano: Int,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onMarcarPagoReal: (Int) -> Unit
 ) {
-    var contas by remember(items) { mutableStateOf(items) }
     var contaSelecionada by remember { mutableStateOf<ContaPagar?>(null) }
     var acaoMensagem by remember { mutableStateOf<String?>(null) }
 
@@ -109,7 +109,7 @@ fun ContasPagarScreen(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "${contas.size} contas carregadas",
+                            text = "${items.size} contas carregadas",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
@@ -139,7 +139,7 @@ fun ContasPagarScreen(
                 }
             }
 
-            contas.isEmpty() -> {
+            items.isEmpty() -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("Nenhuma conta encontrada")
                 }
@@ -154,36 +154,17 @@ fun ContasPagarScreen(
                 ) {
                     item { Spacer(modifier = Modifier.height(10.dp)) }
 
-                    items(contas) { conta ->
+                    items(items) { conta ->
                         ContaPagarCard(
                             conta = conta,
                             onVerDetalhes = {
                                 contaSelecionada = conta
                             },
                             onMarcarPago = {
-                                contas = contas.map {
-                                    if (it.id == conta.id) {
-                                        it.copy(
-                                            status = "pago",
-                                            valorPago = it.valor,
-                                            saldoAberto = 0.0
-                                        )
-                                    } else it
-                                }
-                                acaoMensagem = "Conta marcada como paga"
+                                onMarcarPagoReal(conta.id)
                             },
                             onPagamentoParcial = {
-                                contas = contas.map {
-                                    if (it.id == conta.id) {
-                                        val pago = it.valor * 0.5
-                                        it.copy(
-                                            status = "parcial",
-                                            valorPago = pago,
-                                            saldoAberto = it.valor - pago
-                                        )
-                                    } else it
-                                }
-                                acaoMensagem = "Pagamento parcial aplicado"
+                                acaoMensagem = "Pagamento parcial será a próxima etapa"
                             }
                         )
                     }
@@ -216,7 +197,7 @@ fun ContasPagarScreen(
                     DetalheLinha("Categoria", valorOuTraco(conta.categoria))
                     DetalheLinha("Total", money(conta.valor))
                     DetalheLinha("Pago", money(conta.valorPago))
-                    DetalheLinha("Falta pagar", money(faltaPagar(conta)))
+                    DetalheLinha("Saldo", money(faltaPagar(conta)))
                     DetalheLinha("Status", formatStatus(conta.status))
                 }
             }
