@@ -50,7 +50,8 @@ class MainActivity : ComponentActivity() {
                             onPreviousMonth = viewModel::previousMonthContas,
                             onNextMonth = viewModel::nextMonthContas,
                             onBack = viewModel::backToDashboard,
-                            onMarcarPagoReal = viewModel::markContaAsPaid
+                            onMarcarPagoReal = viewModel::markContaAsPaid,
+                            onRegistrarPagamento = viewModel::registerContaPayment
                         )
                     }
 
