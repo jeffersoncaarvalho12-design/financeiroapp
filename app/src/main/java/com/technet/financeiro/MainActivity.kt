@@ -65,7 +65,8 @@ class MainActivity : ComponentActivity() {
                             errorMessage = state.errorMessage,
                             onBack = viewModel::backToDashboard,
                             onConciliar = viewModel::conciliarMovimento,
-                            onCriarDespesa = viewModel::criarDespesaDaConciliacao
+                            onCriarDespesa = viewModel::criarDespesaDaConciliacao,
+                            onCriarReceita = viewModel::criarReceitaDaConciliacao
                         )
                     }
 
