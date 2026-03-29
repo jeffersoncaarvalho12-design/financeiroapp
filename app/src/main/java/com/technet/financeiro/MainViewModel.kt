@@ -333,4 +333,23 @@ class MainViewModel(
             }
         }
     }
+
+    fun backToDashboard() {
+        _uiState.value = _uiState.value.copy(
+            currentScreen = AppScreen.DASHBOARD,
+            errorMessage = null,
+            expenseMessage = null
+        )
+    }
+
+    fun clearMessages() {
+        _uiState.value = _uiState.value.copy(
+            errorMessage = null,
+            expenseMessage = null
+        )
+    }
+
+    fun logout() {
+        _uiState.value = MainUiState()
+    }
 }
