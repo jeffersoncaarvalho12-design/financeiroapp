@@ -59,9 +59,11 @@ class MainActivity : ComponentActivity() {
                     state.currentScreen == AppScreen.CONCILIACAO -> {
                         ConciliacaoScreen(
                             items = state.conciliacao,
+                            contasDisponiveis = state.contasPagar,
                             isLoading = state.isLoadingConciliacao,
                             errorMessage = state.errorMessage,
-                            onBack = viewModel::backToDashboard
+                            onBack = viewModel::backToDashboard,
+                            onConciliar = viewModel::conciliarMovimento
                         )
                     }
 
