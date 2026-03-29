@@ -46,4 +46,9 @@ interface AuthRepository {
         mes: Int,
         ano: Int
     ): Result<List<ConciliacaoItem>>
+
+    suspend fun conciliarMovimento(
+        movimentoId: Int,
+        contaId: Int
+    ): Result<String>
 }
