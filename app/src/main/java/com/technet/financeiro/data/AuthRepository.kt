@@ -1,5 +1,6 @@
 package com.technet.financeiro.data
 
+import com.technet.financeiro.model.CategoriaItem
 import com.technet.financeiro.model.ConciliacaoItem
 import com.technet.financeiro.model.ContaPagar
 import com.technet.financeiro.model.DashboardSummary
@@ -50,5 +51,17 @@ interface AuthRepository {
     suspend fun conciliarMovimento(
         movimentoId: Int,
         contaId: Int
+    ): Result<String>
+
+    suspend fun listCategorias(): Result<List<CategoriaItem>>
+
+    suspend fun criarDespesaDaConciliacao(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        categoriaId: Int,
+        observacoes: String,
+        movimentoId: Int,
+        conciliarAposCriar: Boolean
     ): Result<String>
 }
