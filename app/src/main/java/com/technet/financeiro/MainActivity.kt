@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.technet.financeiro.ui.screens.ConciliacaoScreen
 import com.technet.financeiro.ui.screens.ContasPagarScreen
 import com.technet.financeiro.ui.screens.DashboardScreen
 import com.technet.financeiro.ui.screens.LoginScreen
@@ -55,6 +56,15 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    state.currentScreen == AppScreen.CONCILIACAO -> {
+                        ConciliacaoScreen(
+                            items = state.conciliacao,
+                            isLoading = state.isLoadingConciliacao,
+                            errorMessage = state.errorMessage,
+                            onBack = viewModel::backToDashboard
+                        )
+                    }
+
                     else -> {
                         DashboardScreen(
                             user = state.user,
@@ -62,6 +72,7 @@ class MainActivity : ComponentActivity() {
                             message = state.expenseMessage,
                             onOpenNewExpense = viewModel::openNewExpense,
                             onOpenContasPagar = viewModel::openContasPagar,
+                            onOpenConciliacao = viewModel::openConciliacao,
                             onClearMessage = viewModel::clearMessages,
                             onLogout = viewModel::logout
                         )
