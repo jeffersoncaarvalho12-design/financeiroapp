@@ -370,6 +370,50 @@ class FakeAuthRepository : AuthRepository {
         }
     }
 
+    override suspend fun conciliarMovimento(
+        movimentoId: Int,
+        contaId: Int
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(ApiConfig.BASE_URL + "conciliar_movimento.php")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doInput = true
+                doOutput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val postData = buildString {
+                append("movimento_id=")
+                append(URLEncoder.encode(movimentoId.toString(), "UTF-8"))
+                append("&conta_id=")
+                append(URLEncoder.encode(contaId.toString(), "UTF-8"))
+            }
+
+            BufferedWriter(OutputStreamWriter(conn.outputStream, Charsets.UTF_8)).use { writer ->
+                writer.write(postData)
+                writer.flush()
+            }
+
+            val response = readResponse(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Erro ao conciliar movimento"))
+                )
+            }
+
+            Result.success(json.optString("message", "Movimento conciliado com sucesso"))
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro ao conciliar movimento: ${e.message}"))
+        }
+    }
+
     private fun readResponse(conn: HttpURLConnection): String {
         val stream = if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
         return BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { reader ->
