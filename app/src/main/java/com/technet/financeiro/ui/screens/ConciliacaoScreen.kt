@@ -9,15 +9,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -28,6 +29,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,6 +50,18 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private enum class FiltroStatusConciliacao {
+    TODOS,
+    PENDENTE,
+    CONCILIADO
+}
+
+private enum class FiltroTipoConciliacao {
+    TODOS,
+    ENTRADA,
+    SAIDA
+}
+
 @Composable
 fun ConciliacaoScreen(
     items: List<ConciliacaoItem>,
@@ -65,6 +79,42 @@ fun ConciliacaoScreen(
     var itemCriarDespesa by remember { mutableStateOf<ConciliacaoItem?>(null) }
     var itemCriarReceita by remember { mutableStateOf<ConciliacaoItem?>(null) }
     var mensagemIgnorar by remember { mutableStateOf<String?>(null) }
+
+    var busca by remember { mutableStateOf("") }
+    var filtroStatus by remember { mutableStateOf(FiltroStatusConciliacao.TODOS) }
+    var filtroTipo by remember { mutableStateOf(FiltroTipoConciliacao.TODOS) }
+
+    val itensFiltrados = remember(items, busca, filtroStatus, filtroTipo) {
+        items.filter { item ->
+            val termo = busca.trim().lowercase()
+            val descricao = item.descricao.trim().lowercase()
+            val origem = item.origem.trim().lowercase()
+            val tipo = item.tipo.trim().lowercase()
+            val status = item.status.trim().lowercase()
+            val valorTexto = String.format(Locale.US, "%.2f", item.valor)
+
+            val passouBusca = termo.isBlank() ||
+                descricao.contains(termo) ||
+                origem.contains(termo) ||
+                tipo.contains(termo) ||
+                status.contains(termo) ||
+                valorTexto.contains(termo)
+
+            val passouStatus = when (filtroStatus) {
+                FiltroStatusConciliacao.TODOS -> true
+                FiltroStatusConciliacao.PENDENTE -> status == "pendente"
+                FiltroStatusConciliacao.CONCILIADO -> status == "conciliado"
+            }
+
+            val passouTipo = when (filtroTipo) {
+                FiltroTipoConciliacao.TODOS -> true
+                FiltroTipoConciliacao.ENTRADA -> tipo == "entrada"
+                FiltroTipoConciliacao.SAIDA -> tipo == "saida" || tipo == "saída"
+            }
+
+            passouBusca && passouStatus && passouTipo
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -96,13 +146,118 @@ fun ConciliacaoScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "${items.size} movimentos carregados",
+                text = "${itensFiltrados.size} movimentos no filtro",
                 modifier = Modifier.padding(horizontal = 16.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = busca,
+                onValueChange = { busca = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                label = { Text("Buscar movimento") },
+                placeholder = { Text("Nome, origem, tipo ou valor") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = "Buscar")
+                },
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Filtro de status",
+                modifier = Modifier.padding(horizontal = 16.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.Gray
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FiltroBotao(
+                    texto = "Todos",
+                    selecionado = filtroStatus == FiltroStatusConciliacao.TODOS,
+                    onClick = { filtroStatus = FiltroStatusConciliacao.TODOS },
+                    modifier = Modifier.weight(1f)
+                )
+                FiltroBotao(
+                    texto = "Pendentes",
+                    selecionado = filtroStatus == FiltroStatusConciliacao.PENDENTE,
+                    onClick = { filtroStatus = FiltroStatusConciliacao.PENDENTE },
+                    modifier = Modifier.weight(1f)
+                )
+                FiltroBotao(
+                    texto = "Conciliados",
+                    selecionado = filtroStatus == FiltroStatusConciliacao.CONCILIADO,
+                    onClick = { filtroStatus = FiltroStatusConciliacao.CONCILIADO },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Filtro de tipo",
+                modifier = Modifier.padding(horizontal = 16.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.Gray
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FiltroBotao(
+                    texto = "Todos",
+                    selecionado = filtroTipo == FiltroTipoConciliacao.TODOS,
+                    onClick = { filtroTipo = FiltroTipoConciliacao.TODOS },
+                    modifier = Modifier.weight(1f)
+                )
+                FiltroBotao(
+                    texto = "Entradas",
+                    selecionado = filtroTipo == FiltroTipoConciliacao.ENTRADA,
+                    onClick = { filtroTipo = FiltroTipoConciliacao.ENTRADA },
+                    modifier = Modifier.weight(1f)
+                )
+                FiltroBotao(
+                    texto = "Saídas",
+                    selecionado = filtroTipo == FiltroTipoConciliacao.SAIDA,
+                    onClick = { filtroTipo = FiltroTipoConciliacao.SAIDA },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            TextButton(
+                onClick = {
+                    busca = ""
+                    filtroStatus = FiltroStatusConciliacao.TODOS
+                    filtroTipo = FiltroTipoConciliacao.TODOS
+                },
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(end = 12.dp)
+            ) {
+                Text("Limpar filtros")
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
         when {
@@ -124,6 +279,12 @@ fun ConciliacaoScreen(
                 }
             }
 
+            itensFiltrados.isEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Nenhum movimento encontrado para o filtro atual")
+                }
+            }
+
             else -> {
                 LazyColumn(
                     modifier = Modifier
@@ -133,7 +294,7 @@ fun ConciliacaoScreen(
                 ) {
                     item { Spacer(modifier = Modifier.height(10.dp)) }
 
-                    items(items) { item ->
+                    items(itensFiltrados, key = { it.id }) { item ->
                         ConciliacaoCard(
                             item = item,
                             onVerDetalhes = { itemDetalhe = item },
@@ -195,7 +356,7 @@ fun ConciliacaoScreen(
                         modifier = Modifier.heightIn(max = 320.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(contasFiltradas) { conta ->
+                        items(contasFiltradas, key = { it.id }) { conta ->
                             Card(
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier.fillMaxWidth()
@@ -397,6 +558,30 @@ fun ConciliacaoScreen(
 }
 
 @Composable
+private fun FiltroBotao(
+    texto: String,
+    selecionado: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (selecionado) {
+        Button(
+            onClick = onClick,
+            modifier = modifier
+        ) {
+            Text(texto)
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier
+        ) {
+            Text(texto)
+        }
+    }
+}
+
+@Composable
 private fun FormCriacaoMovimento(
     descricao: String,
     onDescricaoChange: (String) -> Unit,
@@ -447,7 +632,7 @@ private fun FormCriacaoMovimento(
                 modifier = Modifier.heightIn(max = 160.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(categorias) { categoria ->
+                items(categorias, key = { it.id }) { categoria ->
                     Card(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
