@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,14 +20,17 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,21 +40,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.technet.financeiro.model.CategoriaItem
 import com.technet.financeiro.model.ConciliacaoItem
 import com.technet.financeiro.model.ContaPagar
 import com.technet.financeiro.ui.theme.BackgroundSoft
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun ConciliacaoScreen(
     items: List<ConciliacaoItem>,
     contasDisponiveis: List<ContaPagar>,
+    categorias: List<CategoriaItem>,
     isLoading: Boolean,
     errorMessage: String?,
     onBack: () -> Unit,
-    onConciliar: (Int, Int) -> Unit
+    onConciliar: (Int, Int) -> Unit,
+    onCriarDespesa: (String, String, String, Int, String, Int, Boolean) -> Unit
 ) {
     var itemDetalhe by remember { mutableStateOf<ConciliacaoItem?>(null) }
     var itemParaConciliar by remember { mutableStateOf<ConciliacaoItem?>(null) }
+    var itemCriarDespesa by remember { mutableStateOf<ConciliacaoItem?>(null) }
     var mensagemIgnorar by remember { mutableStateOf<String?>(null) }
 
     Column(
@@ -125,6 +136,7 @@ fun ConciliacaoScreen(
                             item = item,
                             onVerDetalhes = { itemDetalhe = item },
                             onConciliar = { itemParaConciliar = item },
+                            onCriarDespesa = { itemCriarDespesa = item },
                             onIgnorar = { mensagemIgnorar = "Movimento marcado como ignorado (próxima etapa)" }
                         )
                     }
@@ -177,7 +189,7 @@ fun ConciliacaoScreen(
                     Text("Nenhuma conta disponível carregada para conciliar.")
                 } else {
                     LazyColumn(
-                        modifier = Modifier.height(320.dp),
+                        modifier = Modifier.heightIn(max = 320.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(contasFiltradas) { conta ->
@@ -229,6 +241,134 @@ fun ConciliacaoScreen(
         )
     }
 
+    if (itemCriarDespesa != null) {
+        val item = itemCriarDespesa!!
+        var descricao by remember(item.id) { mutableStateOf(item.descricao) }
+        var valor by remember(item.id) { mutableStateOf(item.valor.toString()) }
+        var vencimento by remember(item.id) {
+            mutableStateOf(
+                if (item.data.length >= 10) item.data.substring(0, 10)
+                else SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            )
+        }
+        var observacoes by remember(item.id) { mutableStateOf("Criado pela conciliação do app") }
+        var categoriaSelecionadaId by remember(item.id) {
+            mutableStateOf(if (categorias.isNotEmpty()) categorias.first().id else 0)
+        }
+        var conciliarAposCriar by remember(item.id) { mutableStateOf(true) }
+
+        AlertDialog(
+            onDismissRequest = { itemCriarDespesa = null },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onCriarDespesa(
+                            descricao.trim(),
+                            valor.trim().replace(",", "."),
+                            vencimento.trim(),
+                            categoriaSelecionadaId,
+                            observacoes.trim(),
+                            item.id,
+                            conciliarAposCriar
+                        )
+                        itemCriarDespesa = null
+                    },
+                    enabled = descricao.isNotBlank() &&
+                        valor.isNotBlank() &&
+                        vencimento.isNotBlank() &&
+                        categoriaSelecionadaId > 0
+                ) {
+                    Text("Criar despesa")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemCriarDespesa = null }) {
+                    Text("Cancelar")
+                }
+            },
+            title = { Text("Criar despesa") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = descricao,
+                        onValueChange = { descricao = it },
+                        label = { Text("Descrição") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = valor,
+                        onValueChange = { valor = it },
+                        label = { Text("Valor") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = vencimento,
+                        onValueChange = { vencimento = it },
+                        label = { Text("Vencimento (YYYY-MM-DD)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Text(
+                        text = "Categoria",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Gray
+                    )
+
+                    if (categorias.isEmpty()) {
+                        Text("Nenhuma categoria carregada")
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 160.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(categorias) { categoria ->
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(categoria.nome)
+                                        Checkbox(
+                                            checked = categoriaSelecionadaId == categoria.id,
+                                            onCheckedChange = {
+                                                categoriaSelecionadaId = categoria.id
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = observacoes,
+                        onValueChange = { observacoes = it },
+                        label = { Text("Observações") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = conciliarAposCriar,
+                            onCheckedChange = { conciliarAposCriar = it }
+                        )
+                        Text("Já conciliar após criar")
+                    }
+                }
+            }
+        )
+    }
+
     if (mensagemIgnorar != null) {
         AlertDialog(
             onDismissRequest = { mensagemIgnorar = null },
@@ -248,6 +388,7 @@ private fun ConciliacaoCard(
     item: ConciliacaoItem,
     onVerDetalhes: () -> Unit,
     onConciliar: () -> Unit,
+    onCriarDespesa: () -> Unit,
     onIgnorar: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -295,7 +436,7 @@ private fun ConciliacaoCard(
             Box(
                 modifier = Modifier
                     .width(5.dp)
-                    .height(162.dp)
+                    .height(170.dp)
                     .background(sideColor)
             )
 
@@ -367,6 +508,14 @@ private fun ConciliacaoCard(
                                     onClick = {
                                         expanded = false
                                         onConciliar()
+                                    }
+                                )
+
+                                DropdownMenuItem(
+                                    text = { Text("Criar despesa") },
+                                    onClick = {
+                                        expanded = false
+                                        onCriarDespesa()
                                     }
                                 )
 
