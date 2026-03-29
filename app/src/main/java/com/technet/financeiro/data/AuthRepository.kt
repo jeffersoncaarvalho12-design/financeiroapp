@@ -29,7 +29,10 @@ interface AuthRepository {
 
     suspend fun listContasPagar(
         mes: Int,
-        ano: Int
+        ano: Int,
+        busca: String = "",
+        status: String = "",
+        tipo: String = ""
     ): Result<List<ContaPagar>>
 
     suspend fun markContaAsPaid(
