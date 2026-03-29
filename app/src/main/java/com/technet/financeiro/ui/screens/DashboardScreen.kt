@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -60,6 +62,7 @@ fun DashboardScreen(
     message: String?,
     onOpenNewExpense: () -> Unit,
     onOpenContasPagar: () -> Unit,
+    onOpenConciliacao: () -> Unit,
     onClearMessage: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -104,9 +107,11 @@ fun DashboardScreen(
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceAround
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
                         Text("Financeiro TECH NET", style = MaterialTheme.typography.headlineSmall)
@@ -124,7 +129,9 @@ fun DashboardScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Button(onClick = onOpenNewExpense) {
@@ -138,6 +145,21 @@ fun DashboardScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    TextButton(onClick = onOpenConciliacao) {
+                        Icon(Icons.Default.SyncAlt, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Conciliação")
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(18.dp))
             }
         }
@@ -146,7 +168,9 @@ fun DashboardScreen(
             item {
                 Card(
                     shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
                 ) {
                     Spacer(modifier = Modifier.height(14.dp))
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -168,6 +192,7 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(430.dp)
+                    .padding(horizontal = 16.dp)
             ) {
                 items(cards) { card ->
                     Card(shape = RoundedCornerShape(22.dp)) {
@@ -207,7 +232,9 @@ fun DashboardScreen(
         item {
             Card(
                 shape = RoundedCornerShape(24.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
             ) {
                 Spacer(modifier = Modifier.height(18.dp))
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
