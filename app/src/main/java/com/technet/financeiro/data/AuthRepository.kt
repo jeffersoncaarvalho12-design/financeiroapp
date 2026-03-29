@@ -64,4 +64,14 @@ interface AuthRepository {
         movimentoId: Int,
         conciliarAposCriar: Boolean
     ): Result<String>
+
+    suspend fun criarReceitaDaConciliacao(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        categoriaId: Int,
+        observacoes: String,
+        movimentoId: Int,
+        conciliarAposCriar: Boolean
+    ): Result<String>
 }
