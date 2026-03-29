@@ -1,109 +1,152 @@
 package com.technet.financeiro.data
 
-import android.util.Log
+import com.technet.financeiro.model.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-class FakeAuthRepository {
+class FakeAuthRepository : AuthRepository {
 
-    data class ConciliacaoItem(
-        val id: Int,
-        val descricao: String,
-        val valor: Double,
-        val tipo: String,
-        val data: String,
-        val origem: String,
-        val status: String,
-        val contaId: Int,
-        val conciliadoEm: String
-    )
+    private var sessionCookie: String? = null
 
-    fun listarConciliacao(
-        mes: Int,
-        ano: Int,
-        busca: String = "",
-        status: String = "",
-        tipo: String = ""
-    ): List<ConciliacaoItem> {
-
-        val lista = mutableListOf<ConciliacaoItem>()
-
+    override suspend fun login(email: String, password: String): Result<User> = withContext(Dispatchers.IO) {
         try {
-            val baseUrl = ApiConfig.BASE_URL + "conciliacao_list.php"
-
-            val params = StringBuilder()
-            params.append("mes=$mes&ano=$ano")
-
-            if (busca.isNotBlank()) {
-                params.append("&busca=${URLEncoder.encode(busca, "UTF-8")}")
+            val url = URL(ApiConfig.BASE_URL + "login.php")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doInput = true
+                doOutput = true
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
             }
 
-            if (status.isNotBlank()) {
-                params.append("&status=${URLEncoder.encode(status, "UTF-8")}")
+            val postData = "email=${URLEncoder.encode(email, "UTF-8")}&password=${URLEncoder.encode(password, "UTF-8")}"
+
+            BufferedWriter(OutputStreamWriter(conn.outputStream)).use {
+                it.write(postData)
             }
 
-            if (tipo.isNotBlank()) {
-                params.append("&tipo=${URLEncoder.encode(tipo, "UTF-8")}")
+            val setCookie = conn.headerFields["Set-Cookie"]
+            if (!setCookie.isNullOrEmpty()) {
+                sessionCookie = setCookie.joinToString("; ") { it.substringBefore(";") }
             }
 
-            val fullUrl = "$baseUrl?$params"
-
-            Log.d("API_DEBUG", "URL: $fullUrl")
-
-            val url = URL(fullUrl)
-            val conn = url.openConnection() as HttpURLConnection
-
-            conn.requestMethod = "GET"
-            conn.connectTimeout = 15000
-            conn.readTimeout = 15000
-            conn.setRequestProperty("Accept", "application/json")
-
-            val responseCode = conn.responseCode
-            Log.d("API_DEBUG", "Response code: $responseCode")
-
-            val inputStream = if (responseCode in 200..299) {
-                conn.inputStream
-            } else {
-                conn.errorStream
-            }
-
-            val response = inputStream.bufferedReader().use { it.readText() }
-
-            Log.d("API_DEBUG", "Response: $response")
-
+            val response = read(conn)
             val json = JSONObject(response)
 
-            if (json.getBoolean("success")) {
-                val items = json.getJSONArray("items")
-
-                for (i in 0 until items.length()) {
-                    val obj = items.getJSONObject(i)
-
-                    val item = ConciliacaoItem(
-                        id = obj.optInt("id"),
-                        descricao = obj.optString("descricao"),
-                        valor = obj.optDouble("valor"),
-                        tipo = obj.optString("tipo"),
-                        data = obj.optString("data"),
-                        origem = obj.optString("origem"),
-                        status = obj.optString("status"),
-                        contaId = obj.optInt("conta_id"),
-                        conciliadoEm = obj.optString("conciliado_em")
-                    )
-
-                    lista.add(item)
-                }
-            } else {
-                Log.e("API_ERROR", "Erro API: ${json.optString("message")}")
+            if (!json.optBoolean("success")) {
+                return@withContext Result.failure(Exception(json.optString("message")))
             }
 
-        } catch (e: Exception) {
-            Log.e("API_ERROR", "Erro conexão: ${e.message}")
-            e.printStackTrace()
-        }
+            val u = json.getJSONObject("user")
 
-        return lista
+            Result.success(User(u.getString("name"), u.getString("email")))
+
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message))
+        }
+    }
+
+    override suspend fun dashboardSummary(): DashboardSummary = DashboardSummary(0.0,0.0,0.0,0.0,0.0)
+
+    override suspend fun createExpense(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        parcelas: Int,
+        observacoes: String
+    ): Result<String> = Result.success("ok")
+
+    override suspend fun listContasPagar(mes: Int, ano: Int): Result<List<ContaPagar>> =
+        Result.success(emptyList())
+
+    override suspend fun markContaAsPaid(contaId: Int): Result<String> =
+        Result.success("ok")
+
+    override suspend fun registerContaPayment(
+        contaId: Int,
+        valor: String,
+        dataPagamento: String,
+        observacoes: String
+    ): Result<ContaPagarPaymentResult> =
+        Result.failure(Exception("Não implementado"))
+
+    override suspend fun listConciliacao(
+        mes: Int,
+        ano: Int
+    ): Result<List<ConciliacaoItem>> = withContext(Dispatchers.IO) {
+
+        try {
+            val url = URL(ApiConfig.BASE_URL + "conciliacao_list.php?mes=$mes&ano=$ano")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val response = read(conn)
+            val json = JSONObject(response)
+
+            val list = mutableListOf<ConciliacaoItem>()
+            val arr = json.optJSONArray("items")
+
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+
+                    list.add(
+                        ConciliacaoItem(
+                            id = o.optInt("id"),
+                            descricao = o.optString("descricao"),
+                            valor = o.optDouble("valor"),
+                            tipo = o.optString("tipo"),
+                            data = o.optString("data"),
+                            origem = o.optString("origem"),
+                            status = o.optString("status")
+                        )
+                    )
+                }
+            }
+
+            Result.success(list)
+
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message))
+        }
+    }
+
+    override suspend fun conciliarMovimento(
+        movimentoId: Int,
+        contaId: Int
+    ): Result<String> = Result.success("ok")
+
+    override suspend fun listCategorias(): Result<List<CategoriaItem>> =
+        Result.success(emptyList())
+
+    override suspend fun criarDespesaDaConciliacao(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        categoriaId: Int,
+        observacoes: String,
+        movimentoId: Int,
+        conciliarAposCriar: Boolean
+    ): Result<String> = Result.success("ok")
+
+    override suspend fun criarReceitaDaConciliacao(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        categoriaId: Int,
+        observacoes: String,
+        movimentoId: Int,
+        conciliarAposCriar: Boolean
+    ): Result<String> = Result.success("ok")
+
+    private fun read(conn: HttpURLConnection): String {
+        val stream = if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
+        return BufferedReader(InputStreamReader(stream)).readText()
     }
 }
