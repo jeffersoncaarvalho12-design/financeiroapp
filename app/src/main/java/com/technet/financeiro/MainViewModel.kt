@@ -92,6 +92,7 @@ class MainViewModel(
     fun openConciliacao() {
         val state = _uiState.value
         loadConciliacao(state.contasMes, state.contasAno)
+        loadContasPagarSilencioso(state.contasMes, state.contasAno)
     }
 
     fun previousMonthContas() {
@@ -147,6 +148,18 @@ class MainViewModel(
         }
     }
 
+    private fun loadContasPagarSilencioso(mes: Int, ano: Int) {
+        viewModelScope.launch {
+            repository.listContasPagar(mes, ano)
+                .onSuccess { items ->
+                    _uiState.value = _uiState.value.copy(
+                        contasPagar = items
+                    )
+                }
+                .onFailure { }
+        }
+    }
+
     private fun loadConciliacao(mes: Int, ano: Int) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
@@ -168,6 +181,29 @@ class MainViewModel(
                     _uiState.value = _uiState.value.copy(
                         isLoadingConciliacao = false,
                         errorMessage = error.message ?: "Erro ao carregar conciliação."
+                    )
+                }
+        }
+    }
+
+    fun conciliarMovimento(movimentoId: Int, contaId: Int) {
+        viewModelScope.launch {
+            repository.conciliarMovimento(movimentoId, contaId)
+                .onSuccess {
+                    val atualizada = _uiState.value.conciliacao.map { item ->
+                        if (item.id == movimentoId) {
+                            item.copy(status = "conciliado")
+                        } else item
+                    }
+
+                    _uiState.value = _uiState.value.copy(
+                        conciliacao = atualizada,
+                        errorMessage = null
+                    )
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = error.message ?: "Erro ao conciliar movimento"
                     )
                 }
         }
