@@ -13,10 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 
 enum class AppScreen {
     DASHBOARD,
@@ -163,31 +160,39 @@ class MainViewModel(
                 contasAno = ano
             )
 
-            repository.listContasPagar(mes, ano)
-                .onSuccess { items ->
-                    _uiState.value = _uiState.value.copy(
-                        contasPagar = items,
-                        isLoadingContas = false
-                    )
-                }
-                .onFailure { error ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoadingContas = false,
-                        errorMessage = error.message ?: "Erro ao listar contas."
-                    )
-                }
+            repository.listContasPagar(
+                mes = mes,
+                ano = ano,
+                busca = "",
+                status = "",
+                tipo = ""
+            ).onSuccess { items ->
+                _uiState.value = _uiState.value.copy(
+                    contasPagar = items,
+                    isLoadingContas = false
+                )
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    isLoadingContas = false,
+                    errorMessage = error.message ?: "Erro ao listar contas."
+                )
+            }
         }
     }
 
     private fun loadContasPagarSilencioso(mes: Int, ano: Int) {
         viewModelScope.launch {
-            repository.listContasPagar(mes, ano)
-                .onSuccess { items ->
-                    _uiState.value = _uiState.value.copy(
-                        contasPagar = items
-                    )
-                }
-                .onFailure { }
+            repository.listContasPagar(
+                mes = mes,
+                ano = ano,
+                busca = "",
+                status = "",
+                tipo = ""
+            ).onSuccess { items ->
+                _uiState.value = _uiState.value.copy(
+                    contasPagar = items
+                )
+            }.onFailure { }
         }
     }
 
@@ -294,3 +299,38 @@ class MainViewModel(
                     errorMessage = error.message ?: "Erro ao criar despesa"
                 )
             }
+        }
+    }
+
+    fun criarReceitaDaConciliacao(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        categoriaId: Int,
+        observacoes: String,
+        movimentoId: Int,
+        conciliarAposCriar: Boolean
+    ) {
+        viewModelScope.launch {
+            repository.criarReceitaDaConciliacao(
+                descricao = descricao,
+                valor = valor,
+                vencimento = vencimento,
+                categoriaId = categoriaId,
+                observacoes = observacoes,
+                movimentoId = movimentoId,
+                conciliarAposCriar = conciliarAposCriar
+            ).onSuccess {
+                if (conciliarAposCriar) {
+                    removerMovimentoDaLista(movimentoId)
+                } else {
+                    _uiState.value = _uiState.value.copy(errorMessage = null)
+                }
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = error.message ?: "Erro ao criar receita"
+                )
+            }
+        }
+    }
+}
