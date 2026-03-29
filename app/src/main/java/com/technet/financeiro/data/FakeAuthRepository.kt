@@ -350,7 +350,6 @@ class FakeAuthRepository : AuthRepository {
             if (arr != null) {
                 for (i in 0 until arr.length()) {
                     val o = arr.getJSONObject(i)
-
                     list.add(
                         ConciliacaoItem(
                             id = o.optInt("id"),
@@ -457,4 +456,130 @@ class FakeAuthRepository : AuthRepository {
         }
     }
 
-    override suspend fun criarDesp
+    override suspend fun criarDespesaDaConciliacao(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        categoriaId: Int,
+        observacoes: String,
+        movimentoId: Int,
+        conciliarAposCriar: Boolean
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(ApiConfig.BASE_URL + "conciliacao_criar_despesa.php")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doInput = true
+                doOutput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val postData = buildString {
+                append("descricao=")
+                append(URLEncoder.encode(descricao, "UTF-8"))
+                append("&valor=")
+                append(URLEncoder.encode(valor, "UTF-8"))
+                append("&vencimento=")
+                append(URLEncoder.encode(vencimento, "UTF-8"))
+                append("&categoria_id=")
+                append(URLEncoder.encode(categoriaId.toString(), "UTF-8"))
+                append("&observacoes=")
+                append(URLEncoder.encode(observacoes, "UTF-8"))
+                append("&movimento_id=")
+                append(URLEncoder.encode(movimentoId.toString(), "UTF-8"))
+                append("&conciliar_apos_criar=")
+                append(if (conciliarAposCriar) "1" else "0")
+            }
+
+            BufferedWriter(OutputStreamWriter(conn.outputStream, Charsets.UTF_8)).use { writer ->
+                writer.write(postData)
+                writer.flush()
+            }
+
+            val response = readResponse(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                val message = json.optString("message", "Erro ao criar despesa")
+                val debug = json.optString("debug", "")
+                val finalMessage = if (debug.isNotBlank()) "$message: $debug" else message
+                return@withContext Result.failure(Exception(finalMessage))
+            }
+
+            Result.success(json.optString("message", "Despesa criada com sucesso"))
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro ao criar despesa da conciliação: ${e.message}"))
+        }
+    }
+
+    override suspend fun criarReceitaDaConciliacao(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        categoriaId: Int,
+        observacoes: String,
+        movimentoId: Int,
+        conciliarAposCriar: Boolean
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(ApiConfig.BASE_URL + "conciliacao_criar_receita.php")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doInput = true
+                doOutput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val postData = buildString {
+                append("descricao=")
+                append(URLEncoder.encode(descricao, "UTF-8"))
+                append("&valor=")
+                append(URLEncoder.encode(valor, "UTF-8"))
+                append("&vencimento=")
+                append(URLEncoder.encode(vencimento, "UTF-8"))
+                append("&categoria_id=")
+                append(URLEncoder.encode(categoriaId.toString(), "UTF-8"))
+                append("&observacoes=")
+                append(URLEncoder.encode(observacoes, "UTF-8"))
+                append("&movimento_id=")
+                append(URLEncoder.encode(movimentoId.toString(), "UTF-8"))
+                append("&conciliar_apos_criar=")
+                append(if (conciliarAposCriar) "1" else "0")
+            }
+
+            BufferedWriter(OutputStreamWriter(conn.outputStream, Charsets.UTF_8)).use { writer ->
+                writer.write(postData)
+                writer.flush()
+            }
+
+            val response = readResponse(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                val message = json.optString("message", "Erro ao criar receita")
+                val debug = json.optString("debug", "")
+                val finalMessage = if (debug.isNotBlank()) "$message: $debug" else message
+                return@withContext Result.failure(Exception(finalMessage))
+            }
+
+            Result.success(json.optString("message", "Receita criada com sucesso"))
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro ao criar receita da conciliação: ${e.message}"))
+        }
+    }
+
+    private fun readResponse(conn: HttpURLConnection): String {
+        val stream = if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
+        return BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { reader ->
+            reader.readText()
+        }
+    }
+}
