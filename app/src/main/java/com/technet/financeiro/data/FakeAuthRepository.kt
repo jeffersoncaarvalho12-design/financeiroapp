@@ -1,5 +1,6 @@
 package com.technet.financeiro.data
 
+import com.technet.financeiro.model.ConciliacaoItem
 import com.technet.financeiro.model.ContaPagar
 import com.technet.financeiro.model.DashboardSummary
 import com.technet.financeiro.model.User
@@ -193,7 +194,6 @@ class FakeAuthRepository : AuthRepository {
             if (arr != null) {
                 for (i in 0 until arr.length()) {
                     val o = arr.getJSONObject(i)
-
                     items.add(
                         ContaPagar(
                             id = o.optInt("id", 0),
@@ -316,6 +316,57 @@ class FakeAuthRepository : AuthRepository {
             )
         } catch (e: Exception) {
             Result.failure(Exception("Erro ao registrar pagamento: ${e.message}"))
+        }
+    }
+
+    override suspend fun listConciliacao(
+        mes: Int,
+        ano: Int
+    ): Result<List<ConciliacaoItem>> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(ApiConfig.BASE_URL + "conciliacao_list.php?mes=$mes&ano=$ano")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                doInput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val response = readResponse(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Erro ao carregar conciliação"))
+                )
+            }
+
+            val arr = json.optJSONArray("items")
+            val list = mutableListOf<ConciliacaoItem>()
+
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+
+                    list.add(
+                        ConciliacaoItem(
+                            id = o.optInt("id"),
+                            descricao = o.optString("descricao"),
+                            valor = o.optDouble("valor"),
+                            tipo = o.optString("tipo"),
+                            data = o.optString("data"),
+                            origem = o.optString("origem"),
+                            status = o.optString("status")
+                        )
+                    )
+                }
+            }
+
+            Result.success(list)
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro conciliação: ${e.message}"))
         }
     }
 
