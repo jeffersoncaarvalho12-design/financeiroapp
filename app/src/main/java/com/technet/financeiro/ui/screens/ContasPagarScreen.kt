@@ -28,6 +28,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,6 +42,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.technet.financeiro.model.ContaPagar
 import com.technet.financeiro.ui.theme.BackgroundSoft
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun ContasPagarScreen(
@@ -52,10 +56,11 @@ fun ContasPagarScreen(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onBack: () -> Unit,
-    onMarcarPagoReal: (Int) -> Unit
+    onMarcarPagoReal: (Int) -> Unit,
+    onRegistrarPagamento: (Int, String, String, String) -> Unit
 ) {
     var contaSelecionada by remember { mutableStateOf<ContaPagar?>(null) }
-    var acaoMensagem by remember { mutableStateOf<String?>(null) }
+    var contaPagamento by remember { mutableStateOf<ContaPagar?>(null) }
 
     Column(
         modifier = Modifier
@@ -164,7 +169,7 @@ fun ContasPagarScreen(
                                 onMarcarPagoReal(conta.id)
                             },
                             onPagamentoParcial = {
-                                acaoMensagem = "Pagamento parcial será a próxima etapa"
+                                contaPagamento = conta
                             }
                         )
                     }
@@ -204,19 +209,66 @@ fun ContasPagarScreen(
         )
     }
 
-    if (acaoMensagem != null) {
+    if (contaPagamento != null) {
+        val conta = contaPagamento!!
+        var valor by remember(conta.id) { mutableStateOf("") }
+        var dataPagamento by remember(conta.id) {
+            mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()))
+        }
+        var observacoes by remember(conta.id) { mutableStateOf("") }
+
         AlertDialog(
-            onDismissRequest = { acaoMensagem = null },
+            onDismissRequest = { contaPagamento = null },
             confirmButton = {
-                Button(onClick = { acaoMensagem = null }) {
-                    Text("OK")
+                Button(
+                    onClick = {
+                        onRegistrarPagamento(
+                            conta.id,
+                            valor.trim().replace(",", "."),
+                            dataPagamento.trim(),
+                            observacoes.trim()
+                        )
+                        contaPagamento = null
+                    },
+                    enabled = valor.isNotBlank() && dataPagamento.isNotBlank()
+                ) {
+                    Text("Salvar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { contaPagamento = null }) {
+                    Text("Cancelar")
                 }
             },
             title = {
-                Text("Ação")
+                Text("Registrar pagamento")
             },
             text = {
-                Text(acaoMensagem!!)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(conta.descricao)
+                    Text("Saldo atual: ${money(faltaPagar(conta))}")
+
+                    OutlinedTextField(
+                        value = valor,
+                        onValueChange = { valor = it },
+                        label = { Text("Valor pago") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = dataPagamento,
+                        onValueChange = { dataPagamento = it },
+                        label = { Text("Data pagamento (YYYY-MM-DD)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = observacoes,
+                        onValueChange = { observacoes = it },
+                        label = { Text("Observações") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         )
     }
