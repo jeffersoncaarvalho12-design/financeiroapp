@@ -11,7 +11,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 enum class AppScreen {
     DASHBOARD,
@@ -139,13 +142,15 @@ class MainViewModel(
         viewModelScope.launch {
             repository.markContaAsPaid(contaId)
                 .onSuccess {
+                    val hoje = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
                     val listaAtualizada = _uiState.value.contasPagar.map { conta ->
                         if (conta.id == contaId) {
                             conta.copy(
                                 status = "pago",
                                 valorPago = conta.valor,
                                 saldoAberto = 0.0,
-                                dataPagamento = _uiState.value.contasAno.toString()
+                                dataPagamento = hoje
                             )
                         } else conta
                     }
@@ -160,6 +165,42 @@ class MainViewModel(
                         errorMessage = error.message ?: "Erro ao marcar conta como paga"
                     )
                 }
+        }
+    }
+
+    fun registerContaPayment(
+        contaId: Int,
+        valor: String,
+        dataPagamento: String,
+        observacoes: String
+    ) {
+        viewModelScope.launch {
+            repository.registerContaPayment(
+                contaId = contaId,
+                valor = valor,
+                dataPagamento = dataPagamento,
+                observacoes = observacoes
+            ).onSuccess { result ->
+                val listaAtualizada = _uiState.value.contasPagar.map { conta ->
+                    if (conta.id == contaId) {
+                        conta.copy(
+                            status = result.status,
+                            valorPago = result.valorPago,
+                            saldoAberto = result.saldoAberto,
+                            dataPagamento = result.dataPagamento
+                        )
+                    } else conta
+                }
+
+                _uiState.value = _uiState.value.copy(
+                    contasPagar = listaAtualizada,
+                    errorMessage = null
+                )
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = error.message ?: "Erro ao registrar pagamento"
+                )
+            }
         }
     }
 
