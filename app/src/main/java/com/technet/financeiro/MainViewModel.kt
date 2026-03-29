@@ -149,207 +149,95 @@ class MainViewModel(
         )
     }
 
-    private fun loadContasPagar(mes: Int, ano: Int) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                currentScreen = AppScreen.CONTAS_PAGAR,
-                isLoadingContas = true,
-                errorMessage = null,
-                expenseMessage = null,
-                contasMes = mes,
-                contasAno = ano
-            )
-
-            repository.listContasPagar(
-                mes = mes,
-                ano = ano,
-                busca = "",
-                status = "",
-                tipo = ""
-            ).onSuccess { items ->
-                _uiState.value = _uiState.value.copy(
-                    contasPagar = items,
-                    isLoadingContas = false
-                )
-            }.onFailure { error ->
-                _uiState.value = _uiState.value.copy(
-                    isLoadingContas = false,
-                    errorMessage = error.message ?: "Erro ao listar contas."
-                )
-            }
-        }
-    }
-
-    private fun loadContasPagarSilencioso(mes: Int, ano: Int) {
-        viewModelScope.launch {
-            repository.listContasPagar(
-                mes = mes,
-                ano = ano,
-                busca = "",
-                status = "",
-                tipo = ""
-            ).onSuccess { items ->
-                _uiState.value = _uiState.value.copy(
-                    contasPagar = items
-                )
-            }.onFailure { }
-        }
-    }
-
-    private fun loadConciliacao(
-        mes: Int,
-        ano: Int,
-        busca: String = "",
-        status: String = "",
-        tipo: String = ""
+    fun createExpense(
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        parcelas: Int,
+        observacoes: String
     ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
-                currentScreen = AppScreen.CONCILIACAO,
-                isLoadingConciliacao = true,
+                isSavingExpense = true,
                 errorMessage = null,
-                contasMes = mes,
-                contasAno = ano,
-                conciliacaoBusca = busca,
-                conciliacaoStatus = status,
-                conciliacaoTipo = tipo
+                expenseMessage = null
             )
 
-            repository.listConciliacao(
-                mes = mes,
-                ano = ano,
-                busca = busca,
-                status = status,
-                tipo = tipo
-            ).onSuccess { items ->
+            repository.createExpense(
+                descricao = descricao,
+                valor = valor,
+                vencimento = vencimento,
+                parcelas = parcelas,
+                observacoes = observacoes
+            ).onSuccess { message ->
                 _uiState.value = _uiState.value.copy(
-                    conciliacao = items,
-                    isLoadingConciliacao = false
+                    isSavingExpense = false,
+                    expenseMessage = message,
+                    errorMessage = null,
+                    currentScreen = AppScreen.NEW_EXPENSE
                 )
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
-                    isLoadingConciliacao = false,
-                    errorMessage = error.message ?: "Erro ao carregar conciliação."
+                    isSavingExpense = false,
+                    errorMessage = error.message ?: "Erro ao criar despesa."
                 )
             }
         }
     }
 
-    private fun carregarCategoriasSilencioso() {
+    fun markContaAsPaid(contaId: Int) {
         viewModelScope.launch {
-            repository.listCategorias()
-                .onSuccess { items ->
+            _uiState.value = _uiState.value.copy(
+                errorMessage = null,
+                expenseMessage = null
+            )
+
+            repository.markContaAsPaid(contaId)
+                .onSuccess { message ->
                     _uiState.value = _uiState.value.copy(
-                        categorias = items
+                        expenseMessage = message,
+                        errorMessage = null
                     )
-                }
-                .onFailure { }
-        }
-    }
-
-    private fun removerMovimentoDaLista(movimentoId: Int) {
-        _uiState.value = _uiState.value.copy(
-            conciliacao = _uiState.value.conciliacao.filterNot { it.id == movimentoId },
-            errorMessage = null
-        )
-    }
-
-    fun conciliarMovimento(movimentoId: Int, contaId: Int) {
-        viewModelScope.launch {
-            repository.conciliarMovimento(movimentoId, contaId)
-                .onSuccess {
-                    removerMovimentoDaLista(movimentoId)
+                    loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
-                        errorMessage = error.message ?: "Erro ao conciliar movimento"
+                        errorMessage = error.message ?: "Erro ao marcar conta como paga."
                     )
                 }
         }
     }
 
-    fun criarDespesaDaConciliacao(
-        descricao: String,
+    fun registerContaPayment(
+        contaId: Int,
         valor: String,
-        vencimento: String,
-        categoriaId: Int,
-        observacoes: String,
-        movimentoId: Int,
-        conciliarAposCriar: Boolean
+        dataPagamento: String,
+        observacoes: String
     ) {
         viewModelScope.launch {
-            repository.criarDespesaDaConciliacao(
-                descricao = descricao,
-                valor = valor,
-                vencimento = vencimento,
-                categoriaId = categoriaId,
-                observacoes = observacoes,
-                movimentoId = movimentoId,
-                conciliarAposCriar = conciliarAposCriar
-            ).onSuccess {
-                if (conciliarAposCriar) {
-                    removerMovimentoDaLista(movimentoId)
-                } else {
-                    _uiState.value = _uiState.value.copy(errorMessage = null)
-                }
+            _uiState.value = _uiState.value.copy(
+                errorMessage = null,
+                expenseMessage = null
+            )
 
+            repository.registerContaPayment(
+                contaId = contaId,
+                valor = valor,
+                dataPagamento = dataPagamento,
+                observacoes = observacoes
+            ).onSuccess {
+                _uiState.value = _uiState.value.copy(
+                    expenseMessage = "Pagamento registrado com sucesso.",
+                    errorMessage = null
+                )
                 loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
-                    errorMessage = error.message ?: "Erro ao criar despesa"
+                    errorMessage = error.message ?: "Erro ao registrar pagamento."
                 )
             }
         }
     }
 
-    fun criarReceitaDaConciliacao(
-        descricao: String,
-        valor: String,
-        vencimento: String,
-        categoriaId: Int,
-        observacoes: String,
-        movimentoId: Int,
-        conciliarAposCriar: Boolean
-    ) {
-        viewModelScope.launch {
-            repository.criarReceitaDaConciliacao(
-                descricao = descricao,
-                valor = valor,
-                vencimento = vencimento,
-                categoriaId = categoriaId,
-                observacoes = observacoes,
-                movimentoId = movimentoId,
-                conciliarAposCriar = conciliarAposCriar
-            ).onSuccess {
-                if (conciliarAposCriar) {
-                    removerMovimentoDaLista(movimentoId)
-                } else {
-                    _uiState.value = _uiState.value.copy(errorMessage = null)
-                }
-            }.onFailure { error ->
-                _uiState.value = _uiState.value.copy(
-                    errorMessage = error.message ?: "Erro ao criar receita"
-                )
-            }
-        }
-    }
-
-    fun backToDashboard() {
-        _uiState.value = _uiState.value.copy(
-            currentScreen = AppScreen.DASHBOARD,
-            errorMessage = null,
-            expenseMessage = null
-        )
-    }
-
-    fun clearMessages() {
-        _uiState.value = _uiState.value.copy(
-            errorMessage = null,
-            expenseMessage = null
-        )
-    }
-
-    fun logout() {
-        _uiState.value = MainUiState()
-    }
-}
+    private fun loadContasPagar(mes: Int, ano: Int) {
+        viewModel
