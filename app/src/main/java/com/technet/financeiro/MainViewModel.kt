@@ -135,6 +135,34 @@ class MainViewModel(
         }
     }
 
+    fun markContaAsPaid(contaId: Int) {
+        viewModelScope.launch {
+            repository.markContaAsPaid(contaId)
+                .onSuccess {
+                    val listaAtualizada = _uiState.value.contasPagar.map { conta ->
+                        if (conta.id == contaId) {
+                            conta.copy(
+                                status = "pago",
+                                valorPago = conta.valor,
+                                saldoAberto = 0.0,
+                                dataPagamento = _uiState.value.contasAno.toString()
+                            )
+                        } else conta
+                    }
+
+                    _uiState.value = _uiState.value.copy(
+                        contasPagar = listaAtualizada,
+                        errorMessage = null
+                    )
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = error.message ?: "Erro ao marcar conta como paga"
+                    )
+                }
+        }
+    }
+
     fun backToDashboard() {
         _uiState.value = _uiState.value.copy(
             currentScreen = AppScreen.DASHBOARD,
