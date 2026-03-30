@@ -36,7 +36,9 @@ interface AuthRepository {
     ): Result<List<ContaPagar>>
 
     suspend fun markContaAsPaid(
-        contaId: Int
+        contaId: Int,
+        dataPagamento: String,
+        observacoes: String
     ): Result<String>
 
     suspend fun registerContaPayment(
@@ -45,6 +47,28 @@ interface AuthRepository {
         dataPagamento: String,
         observacoes: String
     ): Result<ContaPagarPaymentResult>
+
+    suspend fun updateContaDueDate(
+        contaId: Int,
+        dataVencimento: String
+    ): Result<String>
+
+    suspend fun updateContaLaunch(
+        contaId: Int,
+        descricao: String,
+        fornecedorNome: String,
+        valor: String,
+        dataVencimento: String
+    ): Result<String>
+
+    suspend fun updateContaPaymentDate(
+        contaId: Int,
+        dataPagamento: String
+    ): Result<String>
+
+    suspend fun deleteConta(
+        contaId: Int
+    ): Result<String>
 
     suspend fun listConciliacao(
         mes: Int,
