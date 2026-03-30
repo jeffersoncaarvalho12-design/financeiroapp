@@ -35,6 +35,10 @@ interface AuthRepository {
         tipo: String = ""
     ): Result<List<ContaPagar>>
 
+    suspend fun searchContasPagarParaConciliacao(
+        busca: String
+    ): Result<List<ContaPagar>>
+
     suspend fun markContaAsPaid(
         contaId: Int,
         dataPagamento: String,
@@ -81,6 +85,21 @@ interface AuthRepository {
     suspend fun conciliarMovimento(
         movimentoId: Int,
         contaId: Int
+    ): Result<String>
+
+    suspend fun conciliarMovimentoTotal(
+        movimentoId: Int,
+        contaId: Int,
+        dataPagamento: String,
+        observacoes: String
+    ): Result<String>
+
+    suspend fun conciliarMovimentoParcial(
+        movimentoId: Int,
+        contaId: Int,
+        valorPagamento: String,
+        dataPagamento: String,
+        observacoes: String
     ): Result<String>
 
     suspend fun listCategorias(): Result<List<CategoriaItem>>
