@@ -51,8 +51,12 @@ class MainActivity : ComponentActivity() {
                             onPreviousMonth = viewModel::previousMonthContas,
                             onNextMonth = viewModel::nextMonthContas,
                             onBack = viewModel::backToDashboard,
-                            onMarcarPagoReal = viewModel::markContaAsPaid,
-                            onRegistrarPagamento = viewModel::registerContaPayment
+                            onInformarPagamentoTotal = viewModel::markContaAsPaid,
+                            onRegistrarPagamentoParcial = viewModel::registerContaPayment,
+                            onAlterarVencimento = viewModel::updateContaDueDate,
+                            onEditarLancamento = viewModel::updateContaLaunch,
+                            onAlterarDataPagamento = viewModel::updateContaPaymentDate,
+                            onExcluirLancamento = viewModel::deleteConta
                         )
                     }
 
