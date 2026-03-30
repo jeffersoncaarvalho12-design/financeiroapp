@@ -64,11 +64,16 @@ class MainActivity : ComponentActivity() {
                         ConciliacaoScreen(
                             items = state.conciliacao,
                             contasDisponiveis = state.contasPagar,
+                            contasBusca = state.contasBuscaConciliacao,
+                            isLoadingBuscaContas = state.isLoadingBuscaContasConciliacao,
                             categorias = state.categorias,
                             isLoading = state.isLoadingConciliacao,
                             errorMessage = state.errorMessage,
                             onBack = viewModel::backToDashboard,
+                            onBuscarContas = viewModel::buscarContasParaConciliacao,
                             onConciliar = viewModel::conciliarMovimento,
+                            onConciliarTotal = viewModel::conciliarMovimentoTotal,
+                            onConciliarParcial = viewModel::conciliarMovimentoParcial,
                             onCriarDespesa = viewModel::criarDespesaDaConciliacao,
                             onCriarReceita = viewModel::criarReceitaDaConciliacao
                         )
