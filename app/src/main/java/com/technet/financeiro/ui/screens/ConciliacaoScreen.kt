@@ -422,4 +422,691 @@ fun ConciliacaoScreen(
                             CircularProgressIndicator()
                         }
                     } else if (contasUnificadas.isEmpty()) {
-                        Text("Nenhuma
+                        Text("Nenhuma conta encontrada para conciliar.")
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 360.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(contasUnificadas, key = { it.id }) { conta ->
+                                Card(
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            text = conta.descricao.ifBlank { "-" },
+                                            style = MaterialTheme.typography.titleSmall
+                                        )
+
+                                        Text(
+                                            text = fornecedorOuTraco(conta.fornecedorNome),
+                                            color = Color.Gray,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+
+                                        Text(
+                                            text = "Valor: ${money(conta.valor)}",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+
+                                        Text(
+                                            text = "Saldo: ${money(faltaPagar(conta))}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (faltaPagar(conta) > 0.0) Color(0xFFB3261E) else Color(0xFF1E7D3A)
+                                        )
+
+                                        Text(
+                                            text = "Vencimento: ${formatDate(conta.dataVencimento)}",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    onConciliarTotal(
+                                                        item.id,
+                                                        conta.id,
+                                                        dataPagamentoTotal.trim(),
+                                                        observacoesTotal.trim()
+                                                    )
+                                                    itemParaConciliar = null
+                                                },
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text("Conciliar total")
+                                            }
+
+                                            Button(
+                                                onClick = {
+                                                    contextoParcial = ConciliarParcialContext(item, conta)
+                                                    itemParaConciliar = null
+                                                },
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text("Conciliar parcial")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    if (contextoParcial != null) {
+        val ctx = contextoParcial!!
+        var valorPagamento by remember(ctx.item.id, ctx.conta.id) {
+            mutableStateOf(doubleToInput(ctx.item.valor))
+        }
+        var dataPagamento by remember(ctx.item.id, ctx.conta.id) {
+            mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()))
+        }
+        var observacoes by remember(ctx.item.id, ctx.conta.id) { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { contextoParcial = null },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onConciliarParcial(
+                            ctx.item.id,
+                            ctx.conta.id,
+                            valorPagamento.trim().replace(",", "."),
+                            dataPagamento.trim(),
+                            observacoes.trim()
+                        )
+                        contextoParcial = null
+                    },
+                    enabled = valorPagamento.isNotBlank() && dataPagamento.isNotBlank()
+                ) {
+                    Text("Salvar parcial")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { contextoParcial = null }) {
+                    Text("Cancelar")
+                }
+            },
+            title = { Text("Conciliar pagamento parcial") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Movimento: ${ctx.item.descricao}")
+                    Text("Conta: ${ctx.conta.descricao}")
+                    Text("Saldo da conta: ${money(faltaPagar(ctx.conta))}")
+
+                    OutlinedTextField(
+                        value = valorPagamento,
+                        onValueChange = { valorPagamento = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Valor parcial") }
+                    )
+
+                    OutlinedTextField(
+                        value = dataPagamento,
+                        onValueChange = { dataPagamento = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Data pagamento (YYYY-MM-DD)") }
+                    )
+
+                    OutlinedTextField(
+                        value = observacoes,
+                        onValueChange = { observacoes = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Observações") }
+                    )
+                }
+            }
+        )
+    }
+
+    if (itemCriarDespesa != null) {
+        val item = itemCriarDespesa!!
+        var descricao by remember(item.id) { mutableStateOf(item.descricao) }
+        var valor by remember(item.id) { mutableStateOf(item.valor.toString()) }
+        var vencimento by remember(item.id) {
+            mutableStateOf(
+                if (item.data.length >= 10) item.data.substring(0, 10)
+                else SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            )
+        }
+        var observacoes by remember(item.id) { mutableStateOf("Criado pela conciliação do app") }
+        var categoriaSelecionadaId by remember(item.id) {
+            mutableStateOf(if (categorias.isNotEmpty()) categorias.first().id else 0)
+        }
+        var conciliarAposCriar by remember(item.id) { mutableStateOf(true) }
+
+        AlertDialog(
+            onDismissRequest = { itemCriarDespesa = null },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onCriarDespesa(
+                            descricao.trim(),
+                            valor.trim().replace(",", "."),
+                            vencimento.trim(),
+                            categoriaSelecionadaId,
+                            observacoes.trim(),
+                            item.id,
+                            conciliarAposCriar
+                        )
+                        itemCriarDespesa = null
+                    },
+                    enabled = descricao.isNotBlank() &&
+                        valor.isNotBlank() &&
+                        vencimento.isNotBlank() &&
+                        categoriaSelecionadaId > 0
+                ) {
+                    Text("Criar despesa")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemCriarDespesa = null }) {
+                    Text("Cancelar")
+                }
+            },
+            title = { Text("Criar despesa") },
+            text = {
+                FormCriacaoMovimento(
+                    descricao = descricao,
+                    onDescricaoChange = { descricao = it },
+                    valor = valor,
+                    onValorChange = { valor = it },
+                    vencimento = vencimento,
+                    onVencimentoChange = { vencimento = it },
+                    observacoes = observacoes,
+                    onObservacoesChange = { observacoes = it },
+                    categorias = categorias,
+                    categoriaSelecionadaId = categoriaSelecionadaId,
+                    onCategoriaSelecionada = { categoriaSelecionadaId = it },
+                    conciliarAposCriar = conciliarAposCriar,
+                    onConciliarAposCriarChange = { conciliarAposCriar = it }
+                )
+            }
+        )
+    }
+
+    if (itemCriarReceita != null) {
+        val item = itemCriarReceita!!
+        var descricao by remember(item.id) { mutableStateOf(item.descricao) }
+        var valor by remember(item.id) { mutableStateOf(item.valor.toString()) }
+        var vencimento by remember(item.id) {
+            mutableStateOf(
+                if (item.data.length >= 10) item.data.substring(0, 10)
+                else SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            )
+        }
+        var observacoes by remember(item.id) { mutableStateOf("Criado pela conciliação do app") }
+
+        val categoriaScm = categorias.firstOrNull {
+            it.nome.contains("SCM", ignoreCase = true)
+        } ?: categorias.firstOrNull()
+
+        var categoriaSelecionadaId by remember(item.id) {
+            mutableStateOf(categoriaScm?.id ?: 0)
+        }
+
+        var conciliarAposCriar by remember(item.id) { mutableStateOf(true) }
+
+        AlertDialog(
+            onDismissRequest = { itemCriarReceita = null },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onCriarReceita(
+                            descricao.trim(),
+                            valor.trim().replace(",", "."),
+                            vencimento.trim(),
+                            categoriaSelecionadaId,
+                            observacoes.trim(),
+                            item.id,
+                            conciliarAposCriar
+                        )
+                        itemCriarReceita = null
+                    },
+                    enabled = descricao.isNotBlank() &&
+                        valor.isNotBlank() &&
+                        vencimento.isNotBlank() &&
+                        categoriaSelecionadaId > 0
+                ) {
+                    Text("Criar receita")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemCriarReceita = null }) {
+                    Text("Cancelar")
+                }
+            },
+            title = { Text("Criar receita") },
+            text = {
+                FormCriacaoMovimento(
+                    descricao = descricao,
+                    onDescricaoChange = { descricao = it },
+                    valor = valor,
+                    onValorChange = { valor = it },
+                    vencimento = vencimento,
+                    onVencimentoChange = { vencimento = it },
+                    observacoes = observacoes,
+                    onObservacoesChange = { observacoes = it },
+                    categorias = categorias,
+                    categoriaSelecionadaId = categoriaSelecionadaId,
+                    onCategoriaSelecionada = { categoriaSelecionadaId = it },
+                    conciliarAposCriar = conciliarAposCriar,
+                    onConciliarAposCriarChange = { conciliarAposCriar = it }
+                )
+            }
+        )
+    }
+
+    if (mensagemIgnorar != null) {
+        AlertDialog(
+            onDismissRequest = { mensagemIgnorar = null },
+            confirmButton = {
+                TextButton(onClick = { mensagemIgnorar = null }) {
+                    Text("OK")
+                }
+            },
+            title = { Text("Ação") },
+            text = { Text(mensagemIgnorar!!) }
+        )
+    }
+}
+
+@Composable
+private fun FiltroBotao(
+    texto: String,
+    selecionado: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (selecionado) {
+        Button(
+            onClick = onClick,
+            modifier = modifier
+        ) {
+            Text(texto)
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier
+        ) {
+            Text(texto)
+        }
+    }
+}
+
+@Composable
+private fun FormCriacaoMovimento(
+    descricao: String,
+    onDescricaoChange: (String) -> Unit,
+    valor: String,
+    onValorChange: (String) -> Unit,
+    vencimento: String,
+    onVencimentoChange: (String) -> Unit,
+    observacoes: String,
+    onObservacoesChange: (String) -> Unit,
+    categorias: List<CategoriaItem>,
+    categoriaSelecionadaId: Int,
+    onCategoriaSelecionada: (Int) -> Unit,
+    conciliarAposCriar: Boolean,
+    onConciliarAposCriarChange: (Boolean) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedTextField(
+            value = descricao,
+            onValueChange = onDescricaoChange,
+            label = { Text("Descrição") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = valor,
+            onValueChange = onValorChange,
+            label = { Text("Valor") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = vencimento,
+            onValueChange = onVencimentoChange,
+            label = { Text("Vencimento (YYYY-MM-DD)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Text(
+            text = "Categoria",
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.Gray
+        )
+
+        if (categorias.isEmpty()) {
+            Text("Nenhuma categoria carregada")
+        } else {
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 160.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(categorias, key = { it.id }) { categoria ->
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(categoria.nome)
+                            Checkbox(
+                                checked = categoriaSelecionadaId == categoria.id,
+                                onCheckedChange = {
+                                    onCategoriaSelecionada(categoria.id)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        OutlinedTextField(
+            value = observacoes,
+            onValueChange = onObservacoesChange,
+            label = { Text("Observações") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = conciliarAposCriar,
+                onCheckedChange = onConciliarAposCriarChange
+            )
+            Text("Já conciliar após criar")
+        }
+    }
+}
+
+@Composable
+private fun ConciliacaoCard(
+    item: ConciliacaoItem,
+    onVerDetalhes: () -> Unit,
+    onConciliar: () -> Unit,
+    onCriarDespesa: () -> Unit,
+    onCriarReceita: () -> Unit,
+    onIgnorar: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val statusNormalizado = item.status.trim().lowercase()
+    val tipoNormalizado = item.tipo.trim().lowercase()
+
+    val badgeBg = if (statusNormalizado == "conciliado") {
+        Color(0xFFD9F5E3)
+    } else {
+        Color(0xFFFFEFC9)
+    }
+
+    val badgeFg = if (statusNormalizado == "conciliado") {
+        Color(0xFF1E7D3A)
+    } else {
+        Color(0xFF9A6A00)
+    }
+
+    val sideColor = if (tipoNormalizado == "entrada") {
+        Color(0xFF23A55A)
+    } else {
+        Color(0xFFE14D4D)
+    }
+
+    val valorColor = if (tipoNormalizado == "entrada") {
+        Color(0xFF1E7D3A)
+    } else {
+        Color(0xFFB3261E)
+    }
+
+    val tipoColor = if (tipoNormalizado == "entrada") {
+        Color(0xFF1E7D3A)
+    } else {
+        Color(0xFFB3261E)
+    }
+
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(5.dp)
+                    .height(170.dp)
+                    .background(sideColor)
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = item.descricao.ifBlank { "-" },
+                            style = MaterialTheme.typography.titleMedium
+                        )
+
+                        Text(
+                            text = item.origem.ifBlank { "-" },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Card(shape = RoundedCornerShape(50.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .background(badgeBg)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = if (statusNormalizado == "conciliado") "Conciliado" else "Pendente",
+                                    color = badgeFg,
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                            }
+                        }
+
+                        Box {
+                            IconButton(onClick = { expanded = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Ações")
+                            }
+
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Ver detalhes") },
+                                    onClick = {
+                                        expanded = false
+                                        onVerDetalhes()
+                                    }
+                                )
+
+                                DropdownMenuItem(
+                                    text = { Text("Conciliar") },
+                                    onClick = {
+                                        expanded = false
+                                        onConciliar()
+                                    }
+                                )
+
+                                if (tipoNormalizado == "entrada") {
+                                    DropdownMenuItem(
+                                        text = { Text("Criar receita") },
+                                        onClick = {
+                                            expanded = false
+                                            onCriarReceita()
+                                        }
+                                    )
+                                } else {
+                                    DropdownMenuItem(
+                                        text = { Text("Criar despesa") },
+                                        onClick = {
+                                            expanded = false
+                                            onCriarDespesa()
+                                        }
+                                    )
+                                }
+
+                                DropdownMenuItem(
+                                    text = { Text("Ignorar") },
+                                    onClick = {
+                                        expanded = false
+                                        onIgnorar()
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "VALOR",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = money(item.valor),
+                        color = valorColor,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "DATA",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = formatDate(item.data),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "TIPO",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = formatTipo(item.tipo),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = tipoColor
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetalheLinha(
+    titulo: String,
+    valor: String
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = titulo,
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.Gray
+        )
+        Text(
+            text = valor,
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
+}
+
+private fun money(value: Double): String =
+    "R$ " + String.format("%,.2f", value)
+        .replace(",", "X")
+        .replace(".", ",")
+        .replace("X", ".")
+
+private fun formatDate(value: String?): String {
+    if (value.isNullOrBlank() || value == "null") return "-"
+    return if (value.length >= 10) {
+        "${value.substring(8, 10)}/${value.substring(5, 7)}/${value.substring(0, 4)}"
+    } else value
+}
+
+private fun formatTipo(value: String?): String {
+    if (value.isNullOrBlank()) return "-"
+    val v = value.trim().lowercase()
+    return when (v) {
+        "entrada" -> "Entrada"
+        "saida" -> "Saída"
+        "saída" -> "Saída"
+        else -> value.replaceFirstChar { it.uppercase() }
+    }
+}
+
+private fun formatStatus(value: String?): String {
+    if (value.isNullOrBlank()) return "-"
+    val v = value.trim().lowercase()
+    return when (v) {
+        "conciliado" -> "Conciliado"
+        "pendente" -> "Pendente"
+        else -> value.replaceFirstChar { it.uppercase() }
+    }
+}
+
+private fun fornecedorOuTraco(value: String?): String =
+    if (value.isNullOrBlank() || value == "null") "-" else value
+
+private fun faltaPagar(conta: ContaPagar): Double =
+    if (conta.saldoAberto > 0) conta.saldoAberto else conta.valor - conta.valorPago
+
+private fun doubleToInput(value: Double): String =
+    String.format(Locale.US, "%.2f", value)
