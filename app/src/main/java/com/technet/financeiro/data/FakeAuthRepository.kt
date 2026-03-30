@@ -552,7 +552,7 @@ class FakeAuthRepository : AuthRepository {
     }
 
     private fun hojeIso(): String {
-        val java.time.LocalDate = java.time.LocalDate.now()
-        return java.time.LocalDate.toString()
+        val hoje = java.time.LocalDate.now()
+        return hoje.toString()
     }
 }
