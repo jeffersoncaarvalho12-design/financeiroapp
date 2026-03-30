@@ -304,8 +304,48 @@ class FakeAuthRepository : AuthRepository {
         contaId: Int
     ): Result<String> = Result.success("ok")
 
-    override suspend fun listCategorias(): Result<List<CategoriaItem>> =
-        Result.success(emptyList())
+    override suspend fun listCategorias(): Result<List<CategoriaItem>> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(ApiConfig.BASE_URL + "categorias_list.php")
+
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                doInput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val response = read(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Erro ao carregar categorias"))
+                )
+            }
+
+            val list = mutableListOf<CategoriaItem>()
+            val arr = json.optJSONArray("items")
+
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    list.add(
+                        CategoriaItem(
+                            id = o.optInt("id"),
+                            nome = o.optString("nome")
+                        )
+                    )
+                }
+            }
+
+            Result.success(list)
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Erro ao carregar categorias"))
+        }
+    }
 
     override suspend fun criarDespesaDaConciliacao(
         descricao: String,
