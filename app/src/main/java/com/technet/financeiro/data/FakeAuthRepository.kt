@@ -119,6 +119,39 @@ class FakeAuthRepository : AuthRepository {
         }
     }
 
+    override suspend fun searchContasPagarParaConciliacao(
+        busca: String
+    ): Result<List<ContaPagar>> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(
+                ApiConfig.BASE_URL + "contas_pagar_search.php?busca=" +
+                    URLEncoder.encode(busca, "UTF-8")
+            )
+
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                doInput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val response = read(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Erro ao buscar contas"))
+                )
+            }
+
+            Result.success(parseContasPagar(json))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Erro ao buscar contas"))
+        }
+    }
+
     override suspend fun markContaAsPaid(
         contaId: Int,
         dataPagamento: String,
@@ -302,7 +335,48 @@ class FakeAuthRepository : AuthRepository {
     override suspend fun conciliarMovimento(
         movimentoId: Int,
         contaId: Int
-    ): Result<String> = Result.success("ok")
+    ): Result<String> = conciliarMovimentoTotal(
+        movimentoId = movimentoId,
+        contaId = contaId,
+        dataPagamento = "",
+        observacoes = ""
+    )
+
+    override suspend fun conciliarMovimentoTotal(
+        movimentoId: Int,
+        contaId: Int,
+        dataPagamento: String,
+        observacoes: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        postConciliacaoAction(
+            mapOf(
+                "acao" to "conciliar_total",
+                "movimento_id" to movimentoId.toString(),
+                "conta_id" to contaId.toString(),
+                "data_pagamento" to if (dataPagamento.isBlank()) hojeIso() else dataPagamento,
+                "observacoes" to observacoes
+            )
+        )
+    }
+
+    override suspend fun conciliarMovimentoParcial(
+        movimentoId: Int,
+        contaId: Int,
+        valorPagamento: String,
+        dataPagamento: String,
+        observacoes: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        postConciliacaoAction(
+            mapOf(
+                "acao" to "conciliar_parcial",
+                "movimento_id" to movimentoId.toString(),
+                "conta_id" to contaId.toString(),
+                "valor_pagamento" to valorPagamento,
+                "data_pagamento" to if (dataPagamento.isBlank()) hojeIso() else dataPagamento,
+                "observacoes" to observacoes
+            )
+        )
+    }
 
     override suspend fun listCategorias(): Result<List<CategoriaItem>> = withContext(Dispatchers.IO) {
         try {
@@ -433,6 +507,41 @@ class FakeAuthRepository : AuthRepository {
         return JSONObject(response)
     }
 
+    private fun postConciliacaoAction(fields: Map<String, String>): Result<String> {
+        return try {
+            val url = URL(ApiConfig.BASE_URL + "conciliacao_action.php")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doInput = true
+                doOutput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val postData = fields.entries.joinToString("&") { entry ->
+                URLEncoder.encode(entry.key, "UTF-8") + "=" + URLEncoder.encode(entry.value, "UTF-8")
+            }
+
+            BufferedWriter(OutputStreamWriter(conn.outputStream)).use {
+                it.write(postData)
+            }
+
+            val response = read(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                Result.failure(Exception(json.optString("message", "Erro ao conciliar movimento")))
+            } else {
+                Result.success(json.optString("message", "Movimento conciliado com sucesso"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Erro ao conciliar movimento"))
+        }
+    }
+
     private fun read(conn: HttpURLConnection): String {
         val stream =
             if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
@@ -440,5 +549,10 @@ class FakeAuthRepository : AuthRepository {
         return BufferedReader(InputStreamReader(stream)).use { reader ->
             reader.readText()
         }
+    }
+
+    private fun hojeIso(): String {
+        val java.time.LocalDate = java.time.LocalDate.now()
+        return java.time.LocalDate.toString()
     }
 }
