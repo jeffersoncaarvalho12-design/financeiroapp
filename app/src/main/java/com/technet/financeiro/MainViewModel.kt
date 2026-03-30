@@ -184,21 +184,27 @@ class MainViewModel(
         }
     }
 
-    fun markContaAsPaid(contaId: Int) {
+    fun markContaAsPaid(
+        contaId: Int,
+        dataPagamento: String,
+        observacoes: String
+    ) {
         viewModelScope.launch {
-            repository.markContaAsPaid(contaId)
-                .onSuccess { message ->
-                    _uiState.value = _uiState.value.copy(
-                        expenseMessage = message,
-                        errorMessage = null
-                    )
-                    loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
-                }
-                .onFailure { error ->
-                    _uiState.value = _uiState.value.copy(
-                        errorMessage = error.message ?: "Erro ao marcar conta como paga."
-                    )
-                }
+            repository.markContaAsPaid(
+                contaId = contaId,
+                dataPagamento = dataPagamento,
+                observacoes = observacoes
+            ).onSuccess { message ->
+                _uiState.value = _uiState.value.copy(
+                    expenseMessage = message,
+                    errorMessage = null
+                )
+                loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = error.message ?: "Erro ao informar pagamento total."
+                )
+            }
         }
     }
 
@@ -225,6 +231,88 @@ class MainViewModel(
                     errorMessage = error.message ?: "Erro ao registrar pagamento."
                 )
             }
+        }
+    }
+
+    fun updateContaDueDate(contaId: Int, dataVencimento: String) {
+        viewModelScope.launch {
+            repository.updateContaDueDate(contaId, dataVencimento)
+                .onSuccess { message ->
+                    _uiState.value = _uiState.value.copy(
+                        expenseMessage = message,
+                        errorMessage = null
+                    )
+                    loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = error.message ?: "Erro ao alterar vencimento."
+                    )
+                }
+        }
+    }
+
+    fun updateContaLaunch(
+        contaId: Int,
+        descricao: String,
+        fornecedorNome: String,
+        valor: String,
+        dataVencimento: String
+    ) {
+        viewModelScope.launch {
+            repository.updateContaLaunch(
+                contaId = contaId,
+                descricao = descricao,
+                fornecedorNome = fornecedorNome,
+                valor = valor,
+                dataVencimento = dataVencimento
+            ).onSuccess { message ->
+                _uiState.value = _uiState.value.copy(
+                    expenseMessage = message,
+                    errorMessage = null
+                )
+                loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = error.message ?: "Erro ao editar lançamento."
+                )
+            }
+        }
+    }
+
+    fun updateContaPaymentDate(contaId: Int, dataPagamento: String) {
+        viewModelScope.launch {
+            repository.updateContaPaymentDate(contaId, dataPagamento)
+                .onSuccess { message ->
+                    _uiState.value = _uiState.value.copy(
+                        expenseMessage = message,
+                        errorMessage = null
+                    )
+                    loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = error.message ?: "Erro ao alterar data de pagamento."
+                    )
+                }
+        }
+    }
+
+    fun deleteConta(contaId: Int) {
+        viewModelScope.launch {
+            repository.deleteConta(contaId)
+                .onSuccess { message ->
+                    _uiState.value = _uiState.value.copy(
+                        expenseMessage = message,
+                        errorMessage = null
+                    )
+                    loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = error.message ?: "Erro ao excluir lançamento."
+                    )
+                }
         }
     }
 
