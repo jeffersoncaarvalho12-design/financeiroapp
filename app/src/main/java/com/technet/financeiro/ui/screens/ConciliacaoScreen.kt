@@ -34,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,15 +63,25 @@ private enum class FiltroTipoConciliacao {
     SAIDA
 }
 
+private data class ConciliarParcialContext(
+    val item: ConciliacaoItem,
+    val conta: ContaPagar
+)
+
 @Composable
 fun ConciliacaoScreen(
     items: List<ConciliacaoItem>,
     contasDisponiveis: List<ContaPagar>,
+    contasBusca: List<ContaPagar>,
+    isLoadingBuscaContas: Boolean,
     categorias: List<CategoriaItem>,
     isLoading: Boolean,
     errorMessage: String?,
     onBack: () -> Unit,
+    onBuscarContas: (String) -> Unit,
     onConciliar: (Int, Int) -> Unit,
+    onConciliarTotal: (Int, Int, String, String) -> Unit,
+    onConciliarParcial: (Int, Int, String, String, String) -> Unit,
     onCriarDespesa: (String, String, String, Int, String, Int, Boolean) -> Unit,
     onCriarReceita: (String, String, String, Int, String, Int, Boolean) -> Unit
 ) {
@@ -79,6 +90,7 @@ fun ConciliacaoScreen(
     var itemCriarDespesa by remember { mutableStateOf<ConciliacaoItem?>(null) }
     var itemCriarReceita by remember { mutableStateOf<ConciliacaoItem?>(null) }
     var mensagemIgnorar by remember { mutableStateOf<String?>(null) }
+    var contextoParcial by remember { mutableStateOf<ConciliarParcialContext?>(null) }
 
     var busca by remember { mutableStateOf("") }
     var filtroStatus by remember { mutableStateOf(FiltroStatusConciliacao.TODOS) }
@@ -337,7 +349,30 @@ fun ConciliacaoScreen(
 
     if (itemParaConciliar != null) {
         val item = itemParaConciliar!!
-        val contasFiltradas = contasDisponiveis.filter { it.status != "pago" }
+        var buscaConta by remember(item.id) { mutableStateOf("") }
+        var dataPagamentoTotal by remember(item.id) {
+            mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()))
+        }
+        var observacoesTotal by remember(item.id) { mutableStateOf("") }
+
+        LaunchedEffect(item.id) {
+            onBuscarContas("")
+        }
+
+        LaunchedEffect(buscaConta) {
+            onBuscarContas(buscaConta)
+        }
+
+        val contasBase = remember(contasDisponiveis) {
+            contasDisponiveis.filter { it.status.lowercase() != "pago" }
+        }
+
+        val contasUnificadas = remember(contasBase, contasBusca) {
+            val mapa = linkedMapOf<Int, ContaPagar>()
+            contasBase.forEach { mapa[it.id] = it }
+            contasBusca.forEach { mapa[it.id] = it }
+            mapa.values.toList()
+        }
 
         AlertDialog(
             onDismissRequest = { itemParaConciliar = null },
@@ -349,592 +384,42 @@ fun ConciliacaoScreen(
             },
             title = { Text("Escolher conta para conciliar") },
             text = {
-                if (contasFiltradas.isEmpty()) {
-                    Text("Nenhuma conta disponível carregada para conciliar.")
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.heightIn(max = 320.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(contasFiltradas, key = { it.id }) { conta ->
-                            Card(
-                                shape = RoundedCornerShape(14.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        text = conta.descricao.ifBlank { "-" },
-                                        style = MaterialTheme.typography.titleSmall
-                                    )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = buscaConta,
+                        onValueChange = { buscaConta = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Buscar outra conta") },
+                        placeholder = { Text("Descrição, fornecedor ou valor") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, contentDescription = null)
+                        },
+                        singleLine = true
+                    )
 
-                                    Text(
-                                        text = fornecedorOuTraco(conta.fornecedorNome),
-                                        color = Color.Gray,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
+                    OutlinedTextField(
+                        value = dataPagamentoTotal,
+                        onValueChange = { dataPagamentoTotal = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Data pagamento total (YYYY-MM-DD)") },
+                        singleLine = true
+                    )
 
-                                    Text(
-                                        text = "Valor: ${money(conta.valor)}",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
+                    OutlinedTextField(
+                        value = observacoesTotal,
+                        onValueChange = { observacoesTotal = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Observações total") }
+                    )
 
-                                    Text(
-                                        text = "Vencimento: ${formatDate(conta.dataVencimento)}",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-
-                                    TextButton(
-                                        onClick = {
-                                            onConciliar(item.id, conta.id)
-                                            itemParaConciliar = null
-                                        }
-                                    ) {
-                                        Text("Conciliar com esta conta")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        )
-    }
-
-    if (itemCriarDespesa != null) {
-        val item = itemCriarDespesa!!
-        var descricao by remember(item.id) { mutableStateOf(item.descricao) }
-        var valor by remember(item.id) { mutableStateOf(item.valor.toString()) }
-        var vencimento by remember(item.id) {
-            mutableStateOf(
-                if (item.data.length >= 10) item.data.substring(0, 10)
-                else SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-            )
-        }
-        var observacoes by remember(item.id) { mutableStateOf("Criado pela conciliação do app") }
-        var categoriaSelecionadaId by remember(item.id) {
-            mutableStateOf(if (categorias.isNotEmpty()) categorias.first().id else 0)
-        }
-        var conciliarAposCriar by remember(item.id) { mutableStateOf(true) }
-
-        AlertDialog(
-            onDismissRequest = { itemCriarDespesa = null },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onCriarDespesa(
-                            descricao.trim(),
-                            valor.trim().replace(",", "."),
-                            vencimento.trim(),
-                            categoriaSelecionadaId,
-                            observacoes.trim(),
-                            item.id,
-                            conciliarAposCriar
-                        )
-                        itemCriarDespesa = null
-                    },
-                    enabled = descricao.isNotBlank() &&
-                        valor.isNotBlank() &&
-                        vencimento.isNotBlank() &&
-                        categoriaSelecionadaId > 0
-                ) {
-                    Text("Criar despesa")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { itemCriarDespesa = null }) {
-                    Text("Cancelar")
-                }
-            },
-            title = { Text("Criar despesa") },
-            text = {
-                FormCriacaoMovimento(
-                    descricao = descricao,
-                    onDescricaoChange = { descricao = it },
-                    valor = valor,
-                    onValorChange = { valor = it },
-                    vencimento = vencimento,
-                    onVencimentoChange = { vencimento = it },
-                    observacoes = observacoes,
-                    onObservacoesChange = { observacoes = it },
-                    categorias = categorias,
-                    categoriaSelecionadaId = categoriaSelecionadaId,
-                    onCategoriaSelecionada = { categoriaSelecionadaId = it },
-                    conciliarAposCriar = conciliarAposCriar,
-                    onConciliarAposCriarChange = { conciliarAposCriar = it }
-                )
-            }
-        )
-    }
-
-    if (itemCriarReceita != null) {
-        val item = itemCriarReceita!!
-        var descricao by remember(item.id) { mutableStateOf(item.descricao) }
-        var valor by remember(item.id) { mutableStateOf(item.valor.toString()) }
-        var vencimento by remember(item.id) {
-            mutableStateOf(
-                if (item.data.length >= 10) item.data.substring(0, 10)
-                else SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-            )
-        }
-        var observacoes by remember(item.id) { mutableStateOf("Criado pela conciliação do app") }
-
-        val categoriaScm = categorias.firstOrNull {
-            it.nome.contains("SCM", ignoreCase = true)
-        } ?: categorias.firstOrNull()
-
-        var categoriaSelecionadaId by remember(item.id) {
-            mutableStateOf(categoriaScm?.id ?: 0)
-        }
-
-        var conciliarAposCriar by remember(item.id) { mutableStateOf(true) }
-
-        AlertDialog(
-            onDismissRequest = { itemCriarReceita = null },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onCriarReceita(
-                            descricao.trim(),
-                            valor.trim().replace(",", "."),
-                            vencimento.trim(),
-                            categoriaSelecionadaId,
-                            observacoes.trim(),
-                            item.id,
-                            conciliarAposCriar
-                        )
-                        itemCriarReceita = null
-                    },
-                    enabled = descricao.isNotBlank() &&
-                        valor.isNotBlank() &&
-                        vencimento.isNotBlank() &&
-                        categoriaSelecionadaId > 0
-                ) {
-                    Text("Criar receita")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { itemCriarReceita = null }) {
-                    Text("Cancelar")
-                }
-            },
-            title = { Text("Criar receita") },
-            text = {
-                FormCriacaoMovimento(
-                    descricao = descricao,
-                    onDescricaoChange = { descricao = it },
-                    valor = valor,
-                    onValorChange = { valor = it },
-                    vencimento = vencimento,
-                    onVencimentoChange = { vencimento = it },
-                    observacoes = observacoes,
-                    onObservacoesChange = { observacoes = it },
-                    categorias = categorias,
-                    categoriaSelecionadaId = categoriaSelecionadaId,
-                    onCategoriaSelecionada = { categoriaSelecionadaId = it },
-                    conciliarAposCriar = conciliarAposCriar,
-                    onConciliarAposCriarChange = { conciliarAposCriar = it }
-                )
-            }
-        )
-    }
-
-    if (mensagemIgnorar != null) {
-        AlertDialog(
-            onDismissRequest = { mensagemIgnorar = null },
-            confirmButton = {
-                TextButton(onClick = { mensagemIgnorar = null }) {
-                    Text("OK")
-                }
-            },
-            title = { Text("Ação") },
-            text = { Text(mensagemIgnorar!!) }
-        )
-    }
-}
-
-@Composable
-private fun FiltroBotao(
-    texto: String,
-    selecionado: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    if (selecionado) {
-        Button(
-            onClick = onClick,
-            modifier = modifier
-        ) {
-            Text(texto)
-        }
-    } else {
-        OutlinedButton(
-            onClick = onClick,
-            modifier = modifier
-        ) {
-            Text(texto)
-        }
-    }
-}
-
-@Composable
-private fun FormCriacaoMovimento(
-    descricao: String,
-    onDescricaoChange: (String) -> Unit,
-    valor: String,
-    onValorChange: (String) -> Unit,
-    vencimento: String,
-    onVencimentoChange: (String) -> Unit,
-    observacoes: String,
-    onObservacoesChange: (String) -> Unit,
-    categorias: List<CategoriaItem>,
-    categoriaSelecionadaId: Int,
-    onCategoriaSelecionada: (Int) -> Unit,
-    conciliarAposCriar: Boolean,
-    onConciliarAposCriarChange: (Boolean) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedTextField(
-            value = descricao,
-            onValueChange = onDescricaoChange,
-            label = { Text("Descrição") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        OutlinedTextField(
-            value = valor,
-            onValueChange = onValorChange,
-            label = { Text("Valor") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        OutlinedTextField(
-            value = vencimento,
-            onValueChange = onVencimentoChange,
-            label = { Text("Vencimento (YYYY-MM-DD)") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Text(
-            text = "Categoria",
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.Gray
-        )
-
-        if (categorias.isEmpty()) {
-            Text("Nenhuma categoria carregada")
-        } else {
-            LazyColumn(
-                modifier = Modifier.heightIn(max = 160.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                items(categorias, key = { it.id }) { categoria ->
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
+                    if (isLoadingBuscaContas) {
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(categoria.nome)
-                            Checkbox(
-                                checked = categoriaSelecionadaId == categoria.id,
-                                onCheckedChange = {
-                                    onCategoriaSelecionada(categoria.id)
-                                }
-                            )
+                            CircularProgressIndicator()
                         }
-                    }
-                }
-            }
-        }
-
-        OutlinedTextField(
-            value = observacoes,
-            onValueChange = onObservacoesChange,
-            label = { Text("Observações") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = conciliarAposCriar,
-                onCheckedChange = onConciliarAposCriarChange
-            )
-            Text("Já conciliar após criar")
-        }
-    }
-}
-
-@Composable
-private fun ConciliacaoCard(
-    item: ConciliacaoItem,
-    onVerDetalhes: () -> Unit,
-    onConciliar: () -> Unit,
-    onCriarDespesa: () -> Unit,
-    onCriarReceita: () -> Unit,
-    onIgnorar: () -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    val statusNormalizado = item.status.trim().lowercase()
-    val tipoNormalizado = item.tipo.trim().lowercase()
-
-    val badgeBg = if (statusNormalizado == "conciliado") {
-        Color(0xFFD9F5E3)
-    } else {
-        Color(0xFFFFEFC9)
-    }
-
-    val badgeFg = if (statusNormalizado == "conciliado") {
-        Color(0xFF1E7D3A)
-    } else {
-        Color(0xFF9A6A00)
-    }
-
-    val sideColor = if (tipoNormalizado == "entrada") {
-        Color(0xFF23A55A)
-    } else {
-        Color(0xFFE14D4D)
-    }
-
-    val valorColor = if (tipoNormalizado == "entrada") {
-        Color(0xFF1E7D3A)
-    } else {
-        Color(0xFFB3261E)
-    }
-
-    val tipoColor = if (tipoNormalizado == "entrada") {
-        Color(0xFF1E7D3A)
-    } else {
-        Color(0xFFB3261E)
-    }
-
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(5.dp)
-                    .height(170.dp)
-                    .background(sideColor)
-            )
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Text(
-                            text = item.descricao.ifBlank { "-" },
-                            style = MaterialTheme.typography.titleMedium
-                        )
-
-                        Text(
-                            text = item.origem.ifBlank { "-" },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
-                        )
-                    }
-
-                    Column(horizontalAlignment = Alignment.End) {
-                        Card(shape = RoundedCornerShape(50.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .background(badgeBg)
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Text(
-                                    text = if (statusNormalizado == "conciliado") "Conciliado" else "Pendente",
-                                    color = badgeFg,
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                            }
-                        }
-
-                        Box {
-                            IconButton(onClick = { expanded = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "Ações")
-                            }
-
-                            DropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Ver detalhes") },
-                                    onClick = {
-                                        expanded = false
-                                        onVerDetalhes()
-                                    }
-                                )
-
-                                DropdownMenuItem(
-                                    text = { Text("Conciliar") },
-                                    onClick = {
-                                        expanded = false
-                                        onConciliar()
-                                    }
-                                )
-
-                                if (tipoNormalizado == "entrada") {
-                                    DropdownMenuItem(
-                                        text = { Text("Criar receita") },
-                                        onClick = {
-                                            expanded = false
-                                            onCriarReceita()
-                                        }
-                                    )
-                                } else {
-                                    DropdownMenuItem(
-                                        text = { Text("Criar despesa") },
-                                        onClick = {
-                                            expanded = false
-                                            onCriarDespesa()
-                                        }
-                                    )
-                                }
-
-                                DropdownMenuItem(
-                                    text = { Text("Ignorar") },
-                                    onClick = {
-                                        expanded = false
-                                        onIgnorar()
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = "VALOR",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = money(item.valor),
-                        color = valorColor,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "DATA",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
-                        )
-                        Text(
-                            text = formatDate(item.data),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "TIPO",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.Gray
-                        )
-                        Text(
-                            text = formatTipo(item.tipo),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = tipoColor
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun DetalheLinha(
-    titulo: String,
-    valor: String
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            text = titulo,
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.Gray
-        )
-        Text(
-            text = valor,
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
-}
-
-private fun money(value: Double): String =
-    "R$ " + String.format("%,.2f", value)
-        .replace(",", "X")
-        .replace(".", ",")
-        .replace("X", ".")
-
-private fun formatDate(value: String?): String {
-    if (value.isNullOrBlank() || value == "null") return "-"
-    return if (value.length >= 10) {
-        "${value.substring(8, 10)}/${value.substring(5, 7)}/${value.substring(0, 4)}"
-    } else value
-}
-
-private fun formatTipo(value: String?): String {
-    if (value.isNullOrBlank()) return "-"
-    val v = value.trim().lowercase()
-    return when (v) {
-        "entrada" -> "Entrada"
-        "saida" -> "Saída"
-        "saída" -> "Saída"
-        else -> value.replaceFirstChar { it.uppercase() }
-    }
-}
-
-private fun formatStatus(value: String?): String {
-    if (value.isNullOrBlank()) return "-"
-    val v = value.trim().lowercase()
-    return when (v) {
-        "conciliado" -> "Conciliado"
-        "pendente" -> "Pendente"
-        else -> value.replaceFirstChar { it.uppercase() }
-    }
-}
-
-private fun fornecedorOuTraco(value: String?): String =
-    if (value.isNullOrBlank() || value == "null") "-" else value
+                    } else if (contasUnificadas.isEmpty()) {
+                        Text("Nenhuma
