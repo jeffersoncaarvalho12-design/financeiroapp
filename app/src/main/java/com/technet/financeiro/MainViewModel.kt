@@ -32,6 +32,8 @@ data class MainUiState(
     val isSavingExpense: Boolean = false,
     val expenseMessage: String? = null,
     val contasPagar: List<ContaPagar> = emptyList(),
+    val contasBuscaConciliacao: List<ContaPagar> = emptyList(),
+    val isLoadingBuscaContasConciliacao: Boolean = false,
     val isLoadingContas: Boolean = false,
     val conciliacao: List<ConciliacaoItem> = emptyList(),
     val isLoadingConciliacao: Boolean = false,
@@ -103,6 +105,7 @@ class MainViewModel(
         )
         loadContasPagarSilencioso(state.contasMes, state.contasAno)
         carregarCategoriasSilencioso()
+        buscarContasParaConciliacao("")
     }
 
     fun previousMonthContas() {
@@ -147,6 +150,28 @@ class MainViewModel(
             status = status,
             tipo = tipo
         )
+    }
+
+    fun buscarContasParaConciliacao(busca: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoadingBuscaContasConciliacao = true
+            )
+
+            repository.searchContasPagarParaConciliacao(busca)
+                .onSuccess { contas ->
+                    _uiState.value = _uiState.value.copy(
+                        contasBuscaConciliacao = contas,
+                        isLoadingBuscaContasConciliacao = false
+                    )
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingBuscaContasConciliacao = false,
+                        errorMessage = error.message ?: "Erro ao buscar contas para conciliar."
+                    )
+                }
+        }
     }
 
     fun createExpense(
@@ -427,12 +452,71 @@ class MainViewModel(
             repository.conciliarMovimento(movimentoId, contaId)
                 .onSuccess {
                     removerMovimentoDaLista(movimentoId)
+                    loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
                         errorMessage = error.message ?: "Erro ao conciliar movimento"
                     )
                 }
+        }
+    }
+
+    fun conciliarMovimentoTotal(
+        movimentoId: Int,
+        contaId: Int,
+        dataPagamento: String,
+        observacoes: String
+    ) {
+        viewModelScope.launch {
+            repository.conciliarMovimentoTotal(
+                movimentoId = movimentoId,
+                contaId = contaId,
+                dataPagamento = dataPagamento,
+                observacoes = observacoes
+            ).onSuccess { message ->
+                _uiState.value = _uiState.value.copy(
+                    expenseMessage = message,
+                    errorMessage = null
+                )
+                removerMovimentoDaLista(movimentoId)
+                loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
+                buscarContasParaConciliacao("")
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = error.message ?: "Erro ao conciliar como total."
+                )
+            }
+        }
+    }
+
+    fun conciliarMovimentoParcial(
+        movimentoId: Int,
+        contaId: Int,
+        valorPagamento: String,
+        dataPagamento: String,
+        observacoes: String
+    ) {
+        viewModelScope.launch {
+            repository.conciliarMovimentoParcial(
+                movimentoId = movimentoId,
+                contaId = contaId,
+                valorPagamento = valorPagamento,
+                dataPagamento = dataPagamento,
+                observacoes = observacoes
+            ).onSuccess { message ->
+                _uiState.value = _uiState.value.copy(
+                    expenseMessage = message,
+                    errorMessage = null
+                )
+                removerMovimentoDaLista(movimentoId)
+                loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
+                buscarContasParaConciliacao("")
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = error.message ?: "Erro ao conciliar como parcial."
+                )
+            }
         }
     }
 
