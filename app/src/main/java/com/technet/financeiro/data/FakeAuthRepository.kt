@@ -113,46 +113,118 @@ class FakeAuthRepository : AuthRepository {
                 )
             }
 
-            val list = mutableListOf<ContaPagar>()
-            val arr = json.optJSONArray("items")
-
-            if (arr != null) {
-                for (i in 0 until arr.length()) {
-                    val o = arr.getJSONObject(i)
-
-                    list.add(
-                        ContaPagar(
-                            id = o.optInt("id"),
-                            descricao = o.optString("descricao"),
-                            valor = o.optDouble("valor"),
-                            dataVencimento = o.optString("data_vencimento"),
-                            status = o.optString("status"),
-                            categoria = o.optString("categoria", "-"),
-                            fornecedorNome = o.optString("fornecedor_nome", "-"),
-                            valorPago = o.optDouble("valor_pago", 0.0),
-                            saldoAberto = o.optDouble("saldo_aberto", 0.0),
-                            dataPagamento = o.optString("data_pagamento", "")
-                        )
-                    )
-                }
-            }
-
-            Result.success(list)
+            Result.success(parseContasPagar(json))
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "Erro ao listar contas a pagar"))
         }
     }
 
-    override suspend fun markContaAsPaid(contaId: Int): Result<String> =
-        Result.success("ok")
+    override suspend fun markContaAsPaid(
+        contaId: Int,
+        dataPagamento: String,
+        observacoes: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        postAction(
+            mapOf(
+                "acao" to "informar_pagamento_total",
+                "conta_id" to contaId.toString(),
+                "data_pagamento_total" to dataPagamento,
+                "observacoes_pagamento_total" to observacoes
+            )
+        )
+    }
 
     override suspend fun registerContaPayment(
         contaId: Int,
         valor: String,
         dataPagamento: String,
         observacoes: String
-    ): Result<ContaPagarPaymentResult> =
-        Result.failure(Exception("Não implementado"))
+    ): Result<ContaPagarPaymentResult> = withContext(Dispatchers.IO) {
+        try {
+            val json = postActionJson(
+                mapOf(
+                    "acao" to "informar_pagamento_parcial",
+                    "conta_id" to contaId.toString(),
+                    "valor_pagamento_parcial" to valor,
+                    "data_pagamento_parcial" to dataPagamento,
+                    "observacoes_pagamento_parcial" to observacoes
+                )
+            )
+
+            if (!json.optBoolean("success", false)) {
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Erro ao registrar pagamento parcial"))
+                )
+            }
+
+            val payload = json.optJSONObject("payload")
+            Result.success(
+                ContaPagarPaymentResult(
+                    contaId = contaId,
+                    valorPago = payload?.optDouble("valor_pago", 0.0) ?: 0.0,
+                    saldoAberto = payload?.optDouble("saldo_aberto", 0.0) ?: 0.0,
+                    status = payload?.optString("status", "parcial") ?: "parcial",
+                    dataPagamento = payload?.optString("data_pagamento", dataPagamento) ?: dataPagamento
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Erro ao registrar pagamento parcial"))
+        }
+    }
+
+    override suspend fun updateContaDueDate(
+        contaId: Int,
+        dataVencimento: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        postAction(
+            mapOf(
+                "acao" to "alterar_vencimento",
+                "conta_id" to contaId.toString(),
+                "data_vencimento" to dataVencimento
+            )
+        )
+    }
+
+    override suspend fun updateContaLaunch(
+        contaId: Int,
+        descricao: String,
+        fornecedorNome: String,
+        valor: String,
+        dataVencimento: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        postAction(
+            mapOf(
+                "acao" to "editar_lancamento",
+                "conta_id" to contaId.toString(),
+                "descricao" to descricao,
+                "fornecedor_nome" to fornecedorNome,
+                "valor" to valor,
+                "data_vencimento" to dataVencimento
+            )
+        )
+    }
+
+    override suspend fun updateContaPaymentDate(
+        contaId: Int,
+        dataPagamento: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        postAction(
+            mapOf(
+                "acao" to "alterar_data_pagamento",
+                "conta_id" to contaId.toString(),
+                "data_pagamento" to dataPagamento
+            )
+        )
+    }
+
+    override suspend fun deleteConta(contaId: Int): Result<String> = withContext(Dispatchers.IO) {
+        postAction(
+            mapOf(
+                "acao" to "excluir_lancamento",
+                "conta_id" to contaId.toString()
+            )
+        )
+    }
 
     override suspend fun listConciliacao(
         mes: Int,
@@ -254,6 +326,72 @@ class FakeAuthRepository : AuthRepository {
         movimentoId: Int,
         conciliarAposCriar: Boolean
     ): Result<String> = Result.success("ok")
+
+    private fun parseContasPagar(json: JSONObject): List<ContaPagar> {
+        val list = mutableListOf<ContaPagar>()
+        val arr = json.optJSONArray("items")
+
+        if (arr != null) {
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+
+                list.add(
+                    ContaPagar(
+                        id = o.optInt("id"),
+                        descricao = o.optString("descricao"),
+                        dataVencimento = o.optString("data_vencimento"),
+                        dataPagamento = o.optString("data_pagamento", ""),
+                        valor = o.optDouble("valor"),
+                        valorPago = o.optDouble("valor_pago", 0.0),
+                        saldoAberto = o.optDouble("saldo_aberto", 0.0),
+                        status = o.optString("status"),
+                        categoria = o.optString("categoria", "-"),
+                        fornecedorNome = o.optString("fornecedor_nome", "-")
+                    )
+                )
+            }
+        }
+
+        return list
+    }
+
+    private fun postAction(fields: Map<String, String>): Result<String> {
+        return try {
+            val json = postActionJson(fields)
+            if (!json.optBoolean("success", false)) {
+                Result.failure(Exception(json.optString("message", "Erro ao processar ação")))
+            } else {
+                Result.success(json.optString("message", "Operação realizada com sucesso"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Erro ao processar ação"))
+        }
+    }
+
+    private fun postActionJson(fields: Map<String, String>): JSONObject {
+        val url = URL(ApiConfig.BASE_URL + "contas_pagar_action.php")
+        val conn = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doInput = true
+            doOutput = true
+            connectTimeout = 15000
+            readTimeout = 15000
+            setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+            setRequestProperty("Accept", "application/json")
+            sessionCookie?.let { setRequestProperty("Cookie", it) }
+        }
+
+        val postData = fields.entries.joinToString("&") { entry ->
+            URLEncoder.encode(entry.key, "UTF-8") + "=" + URLEncoder.encode(entry.value, "UTF-8")
+        }
+
+        BufferedWriter(OutputStreamWriter(conn.outputStream)).use {
+            it.write(postData)
+        }
+
+        val response = read(conn)
+        return JSONObject(response)
+    }
 
     private fun read(conn: HttpURLConnection): String {
         val stream =
