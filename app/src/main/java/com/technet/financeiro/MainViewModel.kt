@@ -581,14 +581,18 @@ class MainViewModel(
                 observacoes = observacoes,
                 movimentoId = movimentoId,
                 conciliarAposCriar = conciliarAposCriar
-            ).onSuccess {
+            ).onSuccess { message ->
+                _uiState.value = _uiState.value.copy(
+                    expenseMessage = message,
+                    errorMessage = null
+                )
+
                 if (conciliarAposCriar) {
                     removerMovimentoDaLista(movimentoId)
-                } else {
-                    _uiState.value = _uiState.value.copy(errorMessage = null)
                 }
 
                 loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
+                buscarContasParaConciliacao("")
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     errorMessage = error.message ?: "Erro ao criar despesa"
@@ -615,12 +619,18 @@ class MainViewModel(
                 observacoes = observacoes,
                 movimentoId = movimentoId,
                 conciliarAposCriar = conciliarAposCriar
-            ).onSuccess {
+            ).onSuccess { message ->
+                _uiState.value = _uiState.value.copy(
+                    expenseMessage = message,
+                    errorMessage = null
+                )
+
                 if (conciliarAposCriar) {
                     removerMovimentoDaLista(movimentoId)
-                } else {
-                    _uiState.value = _uiState.value.copy(errorMessage = null)
                 }
+
+                loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
+                buscarContasParaConciliacao("")
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     errorMessage = error.message ?: "Erro ao criar receita"
