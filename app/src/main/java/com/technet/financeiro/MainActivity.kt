@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
 
                     state.currentScreen == AppScreen.NEW_EXPENSE -> {
                         NewExpenseScreen(
+                            categorias = state.categorias,
                             isSaving = state.isSavingExpense,
                             errorMessage = state.errorMessage,
                             onBack = viewModel::backToDashboard,
