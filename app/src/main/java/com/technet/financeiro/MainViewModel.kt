@@ -212,12 +212,38 @@ class MainViewModel(
                 marcarPago = marcarPago,
                 agendado = agendado
             ).onSuccess { message ->
+                val mesDestino = vencimento.substring(5, 7).toIntOrNull()
+                    ?: _uiState.value.contasMes
+                val anoDestino = vencimento.substring(0, 4).toIntOrNull()
+                    ?: _uiState.value.contasAno
+
                 _uiState.value = _uiState.value.copy(
                     isSavingExpense = false,
+                    errorMessage = null,
                     expenseMessage = message,
-                    currentScreen = AppScreen.DASHBOARD
+                    currentScreen = AppScreen.CONTAS_PAGAR,
+                    isLoadingContas = true,
+                    contasMes = mesDestino,
+                    contasAno = anoDestino
                 )
-                loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
+
+                repository.listContasPagar(
+                    mes = mesDestino,
+                    ano = anoDestino,
+                    busca = "",
+                    status = "",
+                    tipo = ""
+                ).onSuccess { items ->
+                    _uiState.value = _uiState.value.copy(
+                        contasPagar = items,
+                        isLoadingContas = false
+                    )
+                }.onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingContas = false,
+                        errorMessage = error.message ?: "Erro ao atualizar contas a pagar."
+                    )
+                }
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isSavingExpense = false,
@@ -365,7 +391,6 @@ class MainViewModel(
                 currentScreen = AppScreen.CONTAS_PAGAR,
                 isLoadingContas = true,
                 errorMessage = null,
-                expenseMessage = null,
                 contasMes = mes,
                 contasAno = ano
             )
