@@ -23,8 +23,16 @@ interface AuthRepository {
         descricao: String,
         valor: String,
         vencimento: String,
-        parcelas: Int,
-        observacoes: String
+        observacoes: String,
+        categoriaId: Int,
+        modoLancamento: String,
+        qtdParcelas: Int,
+        qtdRepeticoes: Int,
+        fornecedorNome: String,
+        formaPagamento: String,
+        contaPagamento: String,
+        marcarPago: Boolean,
+        agendado: Boolean
     ): Result<String>
 
     suspend fun listContasPagar(
