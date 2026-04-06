@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
@@ -51,11 +53,13 @@ fun ContasPagarScreen(
     items: List<ContaPagar>,
     isLoading: Boolean,
     errorMessage: String?,
+    successMessage: String?,
     mes: Int,
     ano: Int,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onBack: () -> Unit,
+    onClearMessage: () -> Unit,
     onInformarPagamentoTotal: (Int, String, String) -> Unit,
     onRegistrarPagamentoParcial: (Int, String, String, String) -> Unit,
     onAlterarVencimento: (Int, String) -> Unit,
@@ -99,6 +103,54 @@ fun ContasPagarScreen(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            if (!successMessage.isNullOrBlank()) {
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFEAF8EE))
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF1E7D3A)
+                        )
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Sucesso",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Color(0xFF1E7D3A)
+                            )
+                            Text(
+                                text = successMessage,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFF185C2C)
+                            )
+                        }
+
+                        IconButton(onClick = onClearMessage) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Fechar mensagem",
+                                tint = Color(0xFF1E7D3A)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             Card(
                 shape = RoundedCornerShape(18.dp),
