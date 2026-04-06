@@ -87,6 +87,7 @@ class MainViewModel(
             expenseMessage = null,
             errorMessage = null
         )
+        carregarCategoriasSilencioso()
     }
 
     fun openContasPagar() {
@@ -178,8 +179,16 @@ class MainViewModel(
         descricao: String,
         valor: String,
         vencimento: String,
-        parcelas: Int,
-        observacoes: String
+        observacoes: String,
+        categoriaId: Int,
+        modoLancamento: String,
+        qtdParcelas: Int,
+        qtdRepeticoes: Int,
+        fornecedorNome: String,
+        formaPagamento: String,
+        contaPagamento: String,
+        marcarPago: Boolean,
+        agendado: Boolean
     ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
@@ -192,14 +201,23 @@ class MainViewModel(
                 descricao = descricao,
                 valor = valor,
                 vencimento = vencimento,
-                parcelas = parcelas,
-                observacoes = observacoes
+                observacoes = observacoes,
+                categoriaId = categoriaId,
+                modoLancamento = modoLancamento,
+                qtdParcelas = qtdParcelas,
+                qtdRepeticoes = qtdRepeticoes,
+                fornecedorNome = fornecedorNome,
+                formaPagamento = formaPagamento,
+                contaPagamento = contaPagamento,
+                marcarPago = marcarPago,
+                agendado = agendado
             ).onSuccess { message ->
                 _uiState.value = _uiState.value.copy(
                     isSavingExpense = false,
                     expenseMessage = message,
                     currentScreen = AppScreen.DASHBOARD
                 )
+                loadContasPagarSilencioso(_uiState.value.contasMes, _uiState.value.contasAno)
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isSavingExpense = false,
