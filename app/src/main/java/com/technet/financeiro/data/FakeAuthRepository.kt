@@ -75,9 +75,69 @@ class FakeAuthRepository : AuthRepository {
         descricao: String,
         valor: String,
         vencimento: String,
-        parcelas: Int,
-        observacoes: String
-    ): Result<String> = Result.success("ok")
+        observacoes: String,
+        categoriaId: Int,
+        modoLancamento: String,
+        qtdParcelas: Int,
+        qtdRepeticoes: Int,
+        fornecedorNome: String,
+        formaPagamento: String,
+        contaPagamento: String,
+        marcarPago: Boolean,
+        agendado: Boolean
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(ApiConfig.BASE_URL + "despesa_create.php")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doInput = true
+                doOutput = true
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                setRequestProperty("Accept", "application/json")
+                sessionCookie?.let { setRequestProperty("Cookie", it) }
+            }
+
+            val fields = linkedMapOf(
+                "descricao" to descricao,
+                "valor" to valor,
+                "vencimento" to vencimento,
+                "observacoes" to observacoes,
+                "categoria_id" to categoriaId.toString(),
+                "modo_lancamento" to modoLancamento,
+                "qtd_parcelas" to qtdParcelas.toString(),
+                "qtd_repeticoes" to qtdRepeticoes.toString(),
+                "fornecedor_nome" to fornecedorNome,
+                "forma_pagamento" to formaPagamento,
+                "conta_pagamento" to contaPagamento,
+                "marcar_pago" to if (marcarPago) "1" else "0",
+                "agendado" to if (agendado) "1" else "0",
+                "data_competencia" to vencimento
+            )
+
+            val postData = fields.entries.joinToString("&") { entry ->
+                URLEncoder.encode(entry.key, "UTF-8") + "=" + URLEncoder.encode(entry.value, "UTF-8")
+            }
+
+            BufferedWriter(OutputStreamWriter(conn.outputStream)).use {
+                it.write(postData)
+            }
+
+            val response = read(conn)
+            val json = JSONObject(response)
+
+            if (!json.optBoolean("success", false)) {
+                return@withContext Result.failure(
+                    Exception(json.optString("message", "Erro ao criar despesa"))
+                )
+            }
+
+            Result.success(json.optString("message", "Despesa cadastrada com sucesso"))
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Erro ao criar despesa"))
+        }
+    }
 
     override suspend fun listContasPagar(
         mes: Int,
