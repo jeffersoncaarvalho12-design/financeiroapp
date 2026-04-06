@@ -489,7 +489,20 @@ class FakeAuthRepository : AuthRepository {
         observacoes: String,
         movimentoId: Int,
         conciliarAposCriar: Boolean
-    ): Result<String> = Result.success("ok")
+    ): Result<String> = withContext(Dispatchers.IO) {
+        postConciliacaoAction(
+            mapOf(
+                "acao" to "criar_despesa",
+                "movimento_id" to movimentoId.toString(),
+                "descricao" to descricao,
+                "valor" to valor,
+                "vencimento" to vencimento,
+                "categoria_id" to categoriaId.toString(),
+                "observacoes" to observacoes,
+                "conciliar_apos_criar" to if (conciliarAposCriar) "1" else "0"
+            )
+        )
+    }
 
     override suspend fun criarReceitaDaConciliacao(
         descricao: String,
@@ -499,7 +512,20 @@ class FakeAuthRepository : AuthRepository {
         observacoes: String,
         movimentoId: Int,
         conciliarAposCriar: Boolean
-    ): Result<String> = Result.success("ok")
+    ): Result<String> = withContext(Dispatchers.IO) {
+        postConciliacaoAction(
+            mapOf(
+                "acao" to "criar_receita_scm",
+                "movimento_id" to movimentoId.toString(),
+                "descricao" to descricao,
+                "valor" to valor,
+                "vencimento" to vencimento,
+                "categoria_id" to categoriaId.toString(),
+                "observacoes" to observacoes,
+                "conciliar_apos_criar" to if (conciliarAposCriar) "1" else "0"
+            )
+        )
+    }
 
     private fun parseContasPagar(json: JSONObject): List<ContaPagar> {
         val list = mutableListOf<ContaPagar>()
