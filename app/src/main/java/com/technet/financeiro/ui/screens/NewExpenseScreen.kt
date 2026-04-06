@@ -18,10 +18,10 @@ import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -37,21 +37,50 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.technet.financeiro.model.CategoriaItem
 import com.technet.financeiro.ui.theme.BackgroundSoft
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun NewExpenseScreen(
+    categorias: List<CategoriaItem>,
     isSaving: Boolean,
     errorMessage: String?,
     onBack: () -> Unit,
-    onSave: (String, String, String, Int, String) -> Unit
+    onSave: (
+        descricao: String,
+        valor: String,
+        vencimento: String,
+        observacoes: String,
+        categoriaId: Int,
+        modoLancamento: String,
+        qtdParcelas: Int,
+        qtdRepeticoes: Int,
+        fornecedorNome: String,
+        formaPagamento: String,
+        contaPagamento: String,
+        marcarPago: Boolean,
+        agendado: Boolean
+    ) -> Unit
 ) {
     var descricao by remember { mutableStateOf("") }
     var valor by remember { mutableStateOf("") }
-    var vencimento by remember { mutableStateOf("") }
+    var vencimento by remember {
+        mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()))
+    }
     var observacoes by remember { mutableStateOf("") }
-    var tipoLancamento by remember { mutableStateOf("unica") }
-    var parcelas by remember { mutableIntStateOf(1) }
+    var fornecedorNome by remember { mutableStateOf("") }
+    var formaPagamento by remember { mutableStateOf("") }
+    var contaPagamento by remember { mutableStateOf("") }
+    var marcarPago by remember { mutableStateOf(false) }
+    var agendado by remember { mutableStateOf(false) }
+
+    var modoLancamento by remember { mutableStateOf("simples") }
+    var qtdParcelas by remember { mutableIntStateOf(2) }
+    var qtdRepeticoes by remember { mutableIntStateOf(1) }
+    var categoriaId by remember { mutableIntStateOf(if (categorias.isNotEmpty()) categorias.first().id else 0) }
 
     Column(
         modifier = Modifier
@@ -78,7 +107,7 @@ fun NewExpenseScreen(
 
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    "Versão 1 ligada na sua API. Use a data no formato YYYY-MM-DD.",
+                    "Mesma lógica principal do web: simples, parcelado e repetição mensal.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -89,6 +118,13 @@ fun NewExpenseScreen(
                 modifier = Modifier.padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                OutlinedTextField(
+                    value = fornecedorNome,
+                    onValueChange = { fornecedorNome = it },
+                    label = { Text("Fornecedor manual") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 OutlinedTextField(
                     value = descricao,
                     onValueChange = { descricao = it },
@@ -113,45 +149,105 @@ fun NewExpenseScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text("Tipo de lançamento", style = MaterialTheme.typography.titleMedium)
+                Text("Categoria", style = MaterialTheme.typography.titleMedium)
+
+                if (categorias.isEmpty()) {
+                    Text("Nenhuma categoria carregada")
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        categorias.forEach { categoria ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = categoriaId == categoria.id,
+                                    onClick = { categoriaId = categoria.id }
+                                )
+                                Text(categoria.nome)
+                            }
+                        }
+                    }
+                }
+
+                Text("Modo de lançamento", style = MaterialTheme.typography.titleMedium)
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
-                        selected = tipoLancamento == "unica",
-                        onClick = {
-                            tipoLancamento = "unica"
-                            parcelas = 1
-                        }
+                        selected = modoLancamento == "simples",
+                        onClick = { modoLancamento = "simples" }
                     )
-                    Text("Única")
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    RadioButton(
-                        selected = tipoLancamento == "parcelada",
-                        onClick = {
-                            tipoLancamento = "parcelada"
-                            if (parcelas < 2) parcelas = 2
-                        }
-                    )
-                    Text("Parcelada")
+                    Text("Simples")
                 }
 
-                if (tipoLancamento == "parcelada") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = modoLancamento == "parcelado",
+                        onClick = {
+                            modoLancamento = "parcelado"
+                            if (qtdParcelas < 2) qtdParcelas = 2
+                        }
+                    )
+                    Text("Parcelado")
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = modoLancamento == "repeticao",
+                        onClick = {
+                            modoLancamento = "repeticao"
+                            if (qtdRepeticoes < 1) qtdRepeticoes = 1
+                        }
+                    )
+                    Text("Repetição mensal")
+                }
+
+                if (modoLancamento == "parcelado") {
                     OutlinedTextField(
-                        value = parcelas.toString(),
+                        value = qtdParcelas.toString(),
                         onValueChange = {
                             val parsed = it.toIntOrNull() ?: 2
-                            parcelas = if (parsed < 2) 2 else parsed
+                            qtdParcelas = if (parsed < 2) 2 else parsed
                         },
                         label = { Text("Quantidade de parcelas") },
-                        leadingIcon = { Icon(Icons.Default.ViewList, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+
+                if (modoLancamento == "repeticao") {
+                    OutlinedTextField(
+                        value = qtdRepeticoes.toString(),
+                        onValueChange = {
+                            val parsed = it.toIntOrNull() ?: 1
+                            qtdRepeticoes = if (parsed < 1) 1 else parsed
+                        },
+                        label = { Text("Meses para repetir") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                OutlinedTextField(
+                    value = formaPagamento,
+                    onValueChange = { formaPagamento = it },
+                    label = { Text("Forma de pagamento") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = contaPagamento,
+                    onValueChange = { contaPagamento = it },
+                    label = { Text("Conta de pagamento") },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 OutlinedTextField(
                     value = observacoes,
@@ -161,6 +257,28 @@ fun NewExpenseScreen(
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = marcarPago,
+                        onCheckedChange = { marcarPago = it }
+                    )
+                    Text("Marcar como pago")
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = agendado,
+                        onCheckedChange = { agendado = it }
+                    )
+                    Text("Agendado")
+                }
 
                 if (!errorMessage.isNullOrBlank()) {
                     Text(
@@ -175,14 +293,23 @@ fun NewExpenseScreen(
                             descricao.trim(),
                             valor.trim().replace(",", "."),
                             vencimento.trim(),
-                            if (tipoLancamento == "parcelada") parcelas else 1,
-                            observacoes.trim()
+                            observacoes.trim(),
+                            categoriaId,
+                            modoLancamento,
+                            if (modoLancamento == "parcelado") qtdParcelas else 1,
+                            if (modoLancamento == "repeticao") qtdRepeticoes else 0,
+                            fornecedorNome.trim(),
+                            formaPagamento.trim(),
+                            contaPagamento.trim(),
+                            marcarPago,
+                            agendado
                         )
                     },
                     enabled = !isSaving &&
                         descricao.isNotBlank() &&
                         valor.isNotBlank() &&
-                        vencimento.isNotBlank(),
+                        vencimento.isNotBlank() &&
+                        categoriaId > 0,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (isSaving) {
