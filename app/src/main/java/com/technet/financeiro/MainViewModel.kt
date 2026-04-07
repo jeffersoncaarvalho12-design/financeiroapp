@@ -256,13 +256,23 @@ class MainViewModel(
     fun markContaAsPaid(
         contaId: Int,
         dataPagamento: String,
-        observacoes: String
+        observacoes: String,
+        formaPagamento: String,
+        contaPagamento: String,
+        juros: String,
+        desconto: String,
+        movimentoExtratoId: Int?
     ) {
         viewModelScope.launch {
             repository.markContaAsPaid(
                 contaId = contaId,
                 dataPagamento = dataPagamento,
-                observacoes = observacoes
+                observacoes = observacoes,
+                formaPagamento = formaPagamento,
+                contaPagamento = contaPagamento,
+                juros = juros,
+                desconto = desconto,
+                movimentoExtratoId = movimentoExtratoId
             ).onSuccess { message ->
                 _uiState.value = _uiState.value.copy(
                     expenseMessage = message,
@@ -281,14 +291,24 @@ class MainViewModel(
         contaId: Int,
         valor: String,
         dataPagamento: String,
-        observacoes: String
+        observacoes: String,
+        formaPagamento: String,
+        contaPagamento: String,
+        juros: String,
+        desconto: String,
+        movimentoExtratoId: Int?
     ) {
         viewModelScope.launch {
             repository.registerContaPayment(
                 contaId = contaId,
                 valor = valor,
                 dataPagamento = dataPagamento,
-                observacoes = observacoes
+                observacoes = observacoes,
+                formaPagamento = formaPagamento,
+                contaPagamento = contaPagamento,
+                juros = juros,
+                desconto = desconto,
+                movimentoExtratoId = movimentoExtratoId
             ).onSuccess {
                 _uiState.value = _uiState.value.copy(
                     expenseMessage = "Pagamento registrado com sucesso.",
