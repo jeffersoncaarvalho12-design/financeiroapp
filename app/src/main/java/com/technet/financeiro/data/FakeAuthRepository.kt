@@ -215,34 +215,53 @@ class FakeAuthRepository : AuthRepository {
     override suspend fun markContaAsPaid(
         contaId: Int,
         dataPagamento: String,
-        observacoes: String
+        observacoes: String,
+        formaPagamento: String,
+        contaPagamento: String,
+        juros: String,
+        desconto: String,
+        movimentoExtratoId: Int?
     ): Result<String> = withContext(Dispatchers.IO) {
-        postAction(
-            mapOf(
-                "acao" to "informar_pagamento_total",
-                "conta_id" to contaId.toString(),
-                "data_pagamento_total" to dataPagamento,
-                "observacoes_pagamento_total" to observacoes
-            )
+        val fields = linkedMapOf(
+            "acao" to "informar_pagamento_total",
+            "conta_id" to contaId.toString(),
+            "data_pagamento_total" to dataPagamento,
+            "observacoes_pagamento_total" to observacoes,
+            "forma_pagamento" to formaPagamento,
+            "conta_pagamento" to contaPagamento,
+            "juros" to juros,
+            "desconto" to desconto
         )
+        movimentoExtratoId?.let { fields["movimento_extrato_id"] = it.toString() }
+        postAction(fields)
     }
 
     override suspend fun registerContaPayment(
         contaId: Int,
         valor: String,
         dataPagamento: String,
-        observacoes: String
+        observacoes: String,
+        formaPagamento: String,
+        contaPagamento: String,
+        juros: String,
+        desconto: String,
+        movimentoExtratoId: Int?
     ): Result<ContaPagarPaymentResult> = withContext(Dispatchers.IO) {
         try {
-            val json = postActionJson(
-                mapOf(
-                    "acao" to "informar_pagamento_parcial",
-                    "conta_id" to contaId.toString(),
-                    "valor_pagamento_parcial" to valor,
-                    "data_pagamento_parcial" to dataPagamento,
-                    "observacoes_pagamento_parcial" to observacoes
-                )
+            val fields = linkedMapOf(
+                "acao" to "informar_pagamento_parcial",
+                "conta_id" to contaId.toString(),
+                "valor_pagamento_parcial" to valor,
+                "data_pagamento_parcial" to dataPagamento,
+                "observacoes_pagamento_parcial" to observacoes,
+                "forma_pagamento" to formaPagamento,
+                "conta_pagamento" to contaPagamento,
+                "juros" to juros,
+                "desconto" to desconto
             )
+            movimentoExtratoId?.let { fields["movimento_extrato_id"] = it.toString() }
+
+            val json = postActionJson(fields)
 
             if (!json.optBoolean("success", false)) {
                 return@withContext Result.failure(
