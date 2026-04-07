@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -35,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -60,8 +62,8 @@ fun ContasPagarScreen(
     onNextMonth: () -> Unit,
     onBack: () -> Unit,
     onClearMessage: () -> Unit,
-    onInformarPagamentoTotal: (Int, String, String) -> Unit,
-    onRegistrarPagamentoParcial: (Int, String, String, String) -> Unit,
+    onInformarPagamentoTotal: (Int, String, String, String, String, String, String, Int?) -> Unit,
+    onRegistrarPagamentoParcial: (Int, String, String, String, String, String, String, String, Int?) -> Unit,
     onAlterarVencimento: (Int, String) -> Unit,
     onEditarLancamento: (Int, String, String, String, String) -> Unit,
     onAlterarDataPagamento: (Int, String) -> Unit,
@@ -278,13 +280,27 @@ fun ContasPagarScreen(
             )
         }
         var observacoes by remember(conta.id) { mutableStateOf("") }
+        var formaPagamento by remember(conta.id) { mutableStateOf("") }
+        var contaPagamento by remember(conta.id) { mutableStateOf("") }
+        var juros by remember(conta.id) { mutableStateOf("") }
+        var desconto by remember(conta.id) { mutableStateOf("") }
+        var movimentoExtratoIdTexto by remember(conta.id) { mutableStateOf("") }
 
         AlertDialog(
             onDismissRequest = { contaPagamentoTotal = null },
             confirmButton = {
                 Button(
                     onClick = {
-                        onInformarPagamentoTotal(conta.id, dataPagamento.trim(), observacoes.trim())
+                        onInformarPagamentoTotal(
+                            conta.id,
+                            dataPagamento.trim(),
+                            observacoes.trim(),
+                            formaPagamento.trim(),
+                            contaPagamento.trim(),
+                            juros.trim().replace(",", "."),
+                            desconto.trim().replace(",", "."),
+                            movimentoExtratoIdTexto.trim().toIntOrNull()
+                        )
                         contaPagamentoTotal = null
                     },
                     enabled = dataPagamento.isNotBlank()
@@ -299,23 +315,67 @@ fun ContasPagarScreen(
             },
             title = { Text("Informar pagamento total") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(conta.descricao)
-                    Text("Valor total: ${money(conta.valor)}")
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 430.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(conta.descricao)
+                            Text("Valor total: ${money(conta.valor)}")
 
-                    OutlinedTextField(
-                        value = dataPagamento,
-                        onValueChange = { dataPagamento = it },
-                        label = { Text("Data pagamento (YYYY-MM-DD)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                            OutlinedTextField(
+                                value = dataPagamento,
+                                onValueChange = { dataPagamento = it },
+                                label = { Text("Data pagamento (YYYY-MM-DD)") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
 
-                    OutlinedTextField(
-                        value = observacoes,
-                        onValueChange = { observacoes = it },
-                        label = { Text("Observações") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                            OutlinedTextField(
+                                value = formaPagamento,
+                                onValueChange = { formaPagamento = it },
+                                label = { Text("Forma pagamento") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            OutlinedTextField(
+                                value = contaPagamento,
+                                onValueChange = { contaPagamento = it },
+                                label = { Text("Conta pagamento") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                OutlinedTextField(
+                                    value = juros,
+                                    onValueChange = { juros = it },
+                                    label = { Text("Juros") },
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                OutlinedTextField(
+                                    value = desconto,
+                                    onValueChange = { desconto = it },
+                                    label = { Text("Desconto") },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            OutlinedTextField(
+                                value = movimentoExtratoIdTexto,
+                                onValueChange = { movimentoExtratoIdTexto = it },
+                                label = { Text("ID movimento extrato (opcional)") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            OutlinedTextField(
+                                value = observacoes,
+                                onValueChange = { observacoes = it },
+                                label = { Text("Observações") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                 }
             }
         )
@@ -328,6 +388,11 @@ fun ContasPagarScreen(
             mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()))
         }
         var observacoes by remember(conta.id) { mutableStateOf("") }
+        var formaPagamento by remember(conta.id) { mutableStateOf("") }
+        var contaPagamento by remember(conta.id) { mutableStateOf("") }
+        var juros by remember(conta.id) { mutableStateOf("") }
+        var desconto by remember(conta.id) { mutableStateOf("") }
+        var movimentoExtratoIdTexto by remember(conta.id) { mutableStateOf("") }
 
         AlertDialog(
             onDismissRequest = { contaPagamentoParcial = null },
@@ -338,7 +403,12 @@ fun ContasPagarScreen(
                             conta.id,
                             valor.trim().replace(",", "."),
                             dataPagamento.trim(),
-                            observacoes.trim()
+                            observacoes.trim(),
+                            formaPagamento.trim(),
+                            contaPagamento.trim(),
+                            juros.trim().replace(",", "."),
+                            desconto.trim().replace(",", "."),
+                            movimentoExtratoIdTexto.trim().toIntOrNull()
                         )
                         contaPagamentoParcial = null
                     },
@@ -354,30 +424,74 @@ fun ContasPagarScreen(
             },
             title = { Text("Pagamento parcial") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(conta.descricao)
-                    Text("Saldo atual: ${money(faltaPagar(conta))}")
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 430.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(conta.descricao)
+                            Text("Saldo atual: ${money(faltaPagar(conta))}")
 
-                    OutlinedTextField(
-                        value = valor,
-                        onValueChange = { valor = it },
-                        label = { Text("Valor pago") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                            OutlinedTextField(
+                                value = valor,
+                                onValueChange = { valor = it },
+                                label = { Text("Valor pago") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
 
-                    OutlinedTextField(
-                        value = dataPagamento,
-                        onValueChange = { dataPagamento = it },
-                        label = { Text("Data pagamento (YYYY-MM-DD)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                            OutlinedTextField(
+                                value = dataPagamento,
+                                onValueChange = { dataPagamento = it },
+                                label = { Text("Data pagamento (YYYY-MM-DD)") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
 
-                    OutlinedTextField(
-                        value = observacoes,
-                        onValueChange = { observacoes = it },
-                        label = { Text("Observações") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                            OutlinedTextField(
+                                value = formaPagamento,
+                                onValueChange = { formaPagamento = it },
+                                label = { Text("Forma pagamento") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            OutlinedTextField(
+                                value = contaPagamento,
+                                onValueChange = { contaPagamento = it },
+                                label = { Text("Conta pagamento") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                OutlinedTextField(
+                                    value = juros,
+                                    onValueChange = { juros = it },
+                                    label = { Text("Juros") },
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                OutlinedTextField(
+                                    value = desconto,
+                                    onValueChange = { desconto = it },
+                                    label = { Text("Desconto") },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            OutlinedTextField(
+                                value = movimentoExtratoIdTexto,
+                                onValueChange = { movimentoExtratoIdTexto = it },
+                                label = { Text("ID movimento extrato (opcional)") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            OutlinedTextField(
+                                value = observacoes,
+                                onValueChange = { observacoes = it },
+                                label = { Text("Observações") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                 }
             }
         )
