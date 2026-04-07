@@ -50,14 +50,24 @@ interface AuthRepository {
     suspend fun markContaAsPaid(
         contaId: Int,
         dataPagamento: String,
-        observacoes: String
+        observacoes: String,
+        formaPagamento: String,
+        contaPagamento: String,
+        juros: String,
+        desconto: String,
+        movimentoExtratoId: Int?
     ): Result<String>
 
     suspend fun registerContaPayment(
         contaId: Int,
         valor: String,
         dataPagamento: String,
-        observacoes: String
+        observacoes: String,
+        formaPagamento: String,
+        contaPagamento: String,
+        juros: String,
+        desconto: String,
+        movimentoExtratoId: Int?
     ): Result<ContaPagarPaymentResult>
 
     suspend fun updateContaDueDate(
