@@ -1,6 +1,7 @@
 package com.technet.financeiro.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
@@ -36,19 +38,30 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.technet.financeiro.model.ContaPagar
 import com.technet.financeiro.ui.theme.BackgroundSoft
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private val FORMAS_PAGAMENTO = listOf(
+    "",
+    "pix",
+    "boleto",
+    "cartao_credito",
+    "cartao_debito",
+    "transferencia",
+    "dinheiro",
+    "debito_automatico"
+)
 
 @Composable
 fun ContasPagarScreen(
@@ -316,65 +329,107 @@ fun ContasPagarScreen(
             title = { Text("Informar pagamento total") },
             text = {
                 LazyColumn(
-                    modifier = Modifier.heightIn(max = 430.dp),
+                    modifier = Modifier.heightIn(max = 460.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     item {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(conta.descricao)
-                            Text("Valor total: ${money(conta.valor)}")
-
-                            OutlinedTextField(
-                                value = dataPagamento,
-                                onValueChange = { dataPagamento = it },
-                                label = { Text("Data pagamento (YYYY-MM-DD)") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            OutlinedTextField(
-                                value = formaPagamento,
-                                onValueChange = { formaPagamento = it },
-                                label = { Text("Forma pagamento") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            OutlinedTextField(
-                                value = contaPagamento,
-                                onValueChange = { contaPagamento = it },
-                                label = { Text("Conta pagamento") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                OutlinedTextField(
-                                    value = juros,
-                                    onValueChange = { juros = it },
-                                    label = { Text("Juros") },
-                                    modifier = Modifier.weight(1f)
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFFF7FAFF))
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = conta.descricao,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
                                 )
-
-                                OutlinedTextField(
-                                    value = desconto,
-                                    onValueChange = { desconto = it },
-                                    label = { Text("Desconto") },
-                                    modifier = Modifier.weight(1f)
+                                Text(
+                                    text = "Valor total: ${money(conta.valor)}",
+                                    color = Color(0xFF1E7D3A),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = "Saldo atual: ${money(faltaPagar(conta))}",
+                                    color = Color.Gray,
+                                    style = MaterialTheme.typography.bodySmall
                                 )
                             }
+                        }
+                    }
 
+                    item {
+                        OutlinedTextField(
+                            value = dataPagamento,
+                            onValueChange = { dataPagamento = it },
+                            label = { Text("Data pagamento (YYYY-MM-DD)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+
+                    item {
+                        FormaPagamentoField(
+                            value = formaPagamento,
+                            onValueChange = { formaPagamento = it }
+                        )
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = contaPagamento,
+                            onValueChange = { contaPagamento = it },
+                            label = { Text("Conta pagamento") },
+                            placeholder = { Text("Ex: Santander, Caixa, Nubank") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+
+                    item {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             OutlinedTextField(
-                                value = movimentoExtratoIdTexto,
-                                onValueChange = { movimentoExtratoIdTexto = it },
-                                label = { Text("ID movimento extrato (opcional)") },
-                                modifier = Modifier.fillMaxWidth()
+                                value = juros,
+                                onValueChange = { juros = it },
+                                label = { Text("Juros") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
                             )
 
                             OutlinedTextField(
-                                value = observacoes,
-                                onValueChange = { observacoes = it },
-                                label = { Text("Observações") },
-                                modifier = Modifier.fillMaxWidth()
+                                value = desconto,
+                                onValueChange = { desconto = it },
+                                label = { Text("Desconto") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
                             )
                         }
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = movimentoExtratoIdTexto,
+                            onValueChange = { movimentoExtratoIdTexto = it },
+                            label = { Text("ID movimento extrato") },
+                            placeholder = { Text("Opcional") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = observacoes,
+                            onValueChange = { observacoes = it },
+                            label = { Text("Observações") },
+                            placeholder = { Text("Observações do pagamento") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             }
@@ -425,72 +480,112 @@ fun ContasPagarScreen(
             title = { Text("Pagamento parcial") },
             text = {
                 LazyColumn(
-                    modifier = Modifier.heightIn(max = 430.dp),
+                    modifier = Modifier.heightIn(max = 460.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     item {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(conta.descricao)
-                            Text("Saldo atual: ${money(faltaPagar(conta))}")
-
-                            OutlinedTextField(
-                                value = valor,
-                                onValueChange = { valor = it },
-                                label = { Text("Valor pago") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            OutlinedTextField(
-                                value = dataPagamento,
-                                onValueChange = { dataPagamento = it },
-                                label = { Text("Data pagamento (YYYY-MM-DD)") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            OutlinedTextField(
-                                value = formaPagamento,
-                                onValueChange = { formaPagamento = it },
-                                label = { Text("Forma pagamento") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            OutlinedTextField(
-                                value = contaPagamento,
-                                onValueChange = { contaPagamento = it },
-                                label = { Text("Conta pagamento") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                OutlinedTextField(
-                                    value = juros,
-                                    onValueChange = { juros = it },
-                                    label = { Text("Juros") },
-                                    modifier = Modifier.weight(1f)
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFFFFFCF2))
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = conta.descricao,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
                                 )
-
-                                OutlinedTextField(
-                                    value = desconto,
-                                    onValueChange = { desconto = it },
-                                    label = { Text("Desconto") },
-                                    modifier = Modifier.weight(1f)
+                                Text(
+                                    text = "Saldo atual: ${money(faltaPagar(conta))}",
+                                    color = Color(0xFF9A6A00),
+                                    style = MaterialTheme.typography.bodyMedium
                                 )
                             }
+                        }
+                    }
 
+                    item {
+                        OutlinedTextField(
+                            value = valor,
+                            onValueChange = { valor = it },
+                            label = { Text("Valor pago") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = dataPagamento,
+                            onValueChange = { dataPagamento = it },
+                            label = { Text("Data pagamento (YYYY-MM-DD)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+
+                    item {
+                        FormaPagamentoField(
+                            value = formaPagamento,
+                            onValueChange = { formaPagamento = it }
+                        )
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = contaPagamento,
+                            onValueChange = { contaPagamento = it },
+                            label = { Text("Conta pagamento") },
+                            placeholder = { Text("Ex: Santander, Caixa, Nubank") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+
+                    item {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             OutlinedTextField(
-                                value = movimentoExtratoIdTexto,
-                                onValueChange = { movimentoExtratoIdTexto = it },
-                                label = { Text("ID movimento extrato (opcional)") },
-                                modifier = Modifier.fillMaxWidth()
+                                value = juros,
+                                onValueChange = { juros = it },
+                                label = { Text("Juros") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
                             )
 
                             OutlinedTextField(
-                                value = observacoes,
-                                onValueChange = { observacoes = it },
-                                label = { Text("Observações") },
-                                modifier = Modifier.fillMaxWidth()
+                                value = desconto,
+                                onValueChange = { desconto = it },
+                                label = { Text("Desconto") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
                             )
                         }
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = movimentoExtratoIdTexto,
+                            onValueChange = { movimentoExtratoIdTexto = it },
+                            label = { Text("ID movimento extrato") },
+                            placeholder = { Text("Opcional") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = observacoes,
+                            onValueChange = { observacoes = it },
+                            label = { Text("Observações") },
+                            placeholder = { Text("Observações do pagamento") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             }
@@ -673,6 +768,59 @@ fun ContasPagarScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun FormaPagamentoField(
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column {
+        Text(
+            text = "Forma pagamento",
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.Gray,
+            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+        )
+
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = formaPagamentoLabel(value),
+                    color = if (value.isBlank()) Color.Gray else Color.Unspecified
+                )
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            FORMAS_PAGAMENTO.forEach { item ->
+                DropdownMenuItem(
+                    text = { Text(formaPagamentoLabel(item)) },
+                    onClick = {
+                        onValueChange(item)
+                        expanded = false
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -923,6 +1071,18 @@ private fun DetalheLinha(
             style = MaterialTheme.typography.bodyLarge
         )
     }
+}
+
+private fun formaPagamentoLabel(value: String): String = when (value) {
+    "" -> "Selecione"
+    "pix" -> "PIX"
+    "boleto" -> "Boleto"
+    "cartao_credito" -> "Cartão de crédito"
+    "cartao_debito" -> "Cartão de débito"
+    "transferencia" -> "Transferência"
+    "dinheiro" -> "Dinheiro"
+    "debito_automatico" -> "Débito automático"
+    else -> value
 }
 
 private fun statusSideColor(status: String): Color = when (status.lowercase()) {
